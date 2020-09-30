@@ -56,7 +56,7 @@ jobs:
         - |
           set -e
           rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
-          mvn checkstyle:checkstyle
+          mvn checkstyle:check
     on_failure: &report_to_slack
       params:
         silent: true
