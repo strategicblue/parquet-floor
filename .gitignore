@@ -1,4 +1,5 @@
 /.idea
 /target
+/pom.xml.versionsBackup
 *.iml
 
