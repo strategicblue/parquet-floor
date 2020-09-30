@@ -1,0 +1,118 @@
+resource_types:
+- name: slack-notification
+  type: registry-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: parquet-floor
+  type: git
+  icon: git
+  webhook_token: ((concourse-webhook-token))
+  check_every: 24h
+  source:
+    uri: git@github.com:strategicblue/parquet-floor.git
+    branch: master
+    private_key: ((concourse-git.private_key))
+
+- name: slack-alert
+  type: slack-notification
+  icon: slack
+  source:
+    url: ((slack-webhook))
+
+- name: every-morning
+  type: time
+  icon: clock
+  source:
+    start: 7:00 AM
+    stop: 7:15 AM
+
+jobs:
+- name: codecheck
+  serial: true
+  plan:
+  - &checkout
+    get: parquet-floor
+    params: {depth: 1}
+    trigger: true
+  - task: lint
+    timeout: 10m
+    config: &basic_config
+      platform: linux
+      image_resource:
+        type: registry-image
+        source: {repository: maven, tag: "3-openjdk-11"}
+      inputs:
+      - name: parquet-floor
+      caches:
+      - path: maven
+      run:
+        dir: parquet-floor
+        path: sh
+        args:
+        - -c
+        - |
+          set -e
+          rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
+          mvn checkstyle:checkstyle
+    on_failure: &report_to_slack
+      params:
+        silent: true
+        text: |
+          <!here> Build FAILED: $BUILD_PIPELINE_NAME - $BUILD_JOB_NAME
+          $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+      put: slack-alert
+
+- name: unit-tests
+  serial: true
+  plan:
+  - <<: *checkout
+  - task: test
+    timeout: 10m
+    config:
+      <<: *basic_config
+      run:
+        dir: parquet-floor
+        path: sh
+        args:
+        - -c
+        - |
+          set -e
+          rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
+          mvn test
+    on_failure: *report_to_slack
+
+- name: dependencies
+  serial: true
+  plan:
+  - get: every-morning
+    trigger: true
+  - <<: *checkout
+    trigger: false
+  - task: upgrade-dependencies
+    timeout: 15m
+    params:
+      GIT_AUTHOR_NAME: 'Autobumper'
+      GIT_AUTHOR_EMAIL: 'systems@strategic-blue.com'
+      GIT_COMMITTER_NAME: 'Autobumper'
+      GIT_COMMITTER_EMAIL: 'systems@strategic-blue.com'
+    config:
+      <<: *basic_config
+      outputs:
+      - name: parquet-floor
+      run:
+        dir: parquet-floor
+        path: sh
+        args:
+        - -c
+        - |
+          set -e
+          rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
+          mvn versions:use-latest-releases && git commit -m "Upgrade dependency versions."
+    on_failure: *report_to_slack
+  - put: parquet-floor
+    params:
+      repository: parquet-floor
+    get_params: {skip_download: true}
