@@ -27,6 +27,15 @@
     </license>
   </licenses>
 
+  <developers>
+    <developer>
+      <name>Tom Denley</name>
+      <email>t.denley@strategic-blue.com</email>
+      <organization>Strategic Blue</organization>
+      <organizationUrl>https://www.strategic-blue.com</organizationUrl>
+    </developer>
+  </developers>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
