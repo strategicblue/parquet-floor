@@ -5,6 +5,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +33,30 @@ public final class ParquetRecord {
     public Object getValue(String columnName) {
         Integer index = colIndexByName.get(columnName);
         return index == null ? null : data[index];
+    }
+
+    public Short getShort(String columnName) {
+        return (Short) getValue(columnName);
+    }
+
+    public Double getDouble(String columnName) {
+        return (Double) getValue(columnName);
+    }
+
+    public Integer getInteger(String columnName) {
+        return (Integer) getValue(columnName);
+    }
+
+    public Long getLong(String columnName) {
+        return (Long) getValue(columnName);
+    }
+
+    public String getString(String columnName) {
+        return (String) getValue(columnName);
+    }
+
+    public Instant getInstant(String columnName) {
+        return Instant.ofEpochMilli(getLong(columnName));
     }
 
     public Map<String, Object> getRowMap() {
