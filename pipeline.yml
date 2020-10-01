@@ -94,10 +94,7 @@ jobs:
           - name: parquet-floor
         run:
           dir: parquet-floor
-          path: sh
-          args:
-            - -c
-            - git log -n 1 --format=%an | grep -e "$GIT_AUTHOR_NAME" || scripts/run-mvn.sh release:prepare release:perform
+          path: scripts/release.sh
       on_failure: *report_to_slack
     - put: parquet-floor
       params:
