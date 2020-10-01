@@ -84,9 +84,8 @@ public class ParquetReader {
         private final String createdBy;
 
         private boolean finished = false;
-        private PageReadStore currentRowGroup;
-        private List<ColumnReader> currentRowGroupColumnReaders;
         private long currentRowGroupSize = -1L;
+        private List<ColumnReader> currentRowGroupColumnReaders;
         private long currentRowIndex = -1L;
 
         public PqSpliterator(ParquetFileReader reader, Set<String> columnNames) {
@@ -118,8 +117,7 @@ public class ParquetReader {
 
                     ColumnReadStore columnReadStore = new ColumnReadStoreImpl(rowGroup, this.recordConverter, this.schema, this.createdBy);
 
-                    this.currentRowGroup = rowGroup;
-                    this.currentRowGroupSize = this.currentRowGroup.getRowCount();
+                    this.currentRowGroupSize = rowGroup.getRowCount();
                     this.currentRowGroupColumnReaders = columns.stream().map(columnReadStore::getColumnReader).collect(Collectors.toList());
                     this.currentRowIndex = 0L;
                 }
