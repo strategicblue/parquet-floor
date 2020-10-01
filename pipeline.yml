@@ -97,7 +97,7 @@ jobs:
           path: sh
           args:
             - -c
-            - git log -n 1 --format=%an | grep -e "$GIT_AUTHOR_NAME" || scripts/run-mvn.sh publish
+            - git log -n 1 --format=%an | grep -e "$GIT_AUTHOR_NAME" || scripts/run-mvn.sh deploy && git diff
       on_failure: *report_to_slack
     - put: parquet-floor
       params:
