@@ -74,6 +74,36 @@ jobs:
         args: [ test ]
     on_failure: *report_to_slack
 
+- name: release
+  serial: true
+  plan:
+    - <<: *checkout
+      passed: [unit-tests]
+    - task: publish-to-github-packages
+      timeout: 15m
+      params:
+        GITHUB_PACKAGES_USERNAME: ((github-packages.username))
+        GITHUB_PACKAGES_TOKEN: ((github-packages.publish_token))
+        GIT_AUTHOR_NAME: 'Releaser'
+        GIT_AUTHOR_EMAIL: 'systems@strategic-blue.com'
+        GIT_COMMITTER_NAME: 'Releaser'
+        GIT_COMMITTER_EMAIL: 'systems@strategic-blue.com'
+      config:
+        <<: *basic_config
+        outputs:
+          - name: parquet-floor
+        run:
+          dir: parquet-floor
+          path: sh
+          args:
+            - -c
+            - git log -n 1 --format=%an | grep -e "$GIT_AUTHOR_NAME" || scripts/run-mvn.sh publish
+      on_failure: *report_to_slack
+    - put: parquet-floor
+      params:
+        repository: parquet-floor
+      get_params: {skip_download: true}
+
 - name: dependencies
   serial: true
   plan:
