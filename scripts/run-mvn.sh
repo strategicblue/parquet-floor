@@ -12,4 +12,4 @@ mkdir -p "${ROOT_DIR}/../maven/repository"
 ln -s "$(readlink -f "${ROOT_DIR}/../maven")" "${HOME}/.m2"
 cp "${ROOT_DIR}/settings.xml" "${HOME}/.m2/."
 
-mvn "${@}"
+mvn --batch-mode "${@}"
