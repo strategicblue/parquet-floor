@@ -63,10 +63,14 @@ public class ParquetWriter {
                 .withCompressionCodec(CompressionCodecName.SNAPPY);
 
         try (org.apache.parquet.hadoop.ParquetWriter<Group> writer = writerBuilder.build()) {
-            SimpleGroup g = new SimpleGroup(schema);
-            g.add("id", 1L);
-            g.add("email", Binary.fromString("hello"));
-            writer.write(g);
+            SimpleGroup a = new SimpleGroup(schema);
+            a.add("id", 1L);
+            a.add("email", Binary.fromString("hello1"));
+            writer.write(a);
+            SimpleGroup b = new SimpleGroup(schema);
+            b.add("id", 2L);
+            b.add("email", Binary.fromString("hello2"));
+            writer.write(b);
         }
     }
 }
