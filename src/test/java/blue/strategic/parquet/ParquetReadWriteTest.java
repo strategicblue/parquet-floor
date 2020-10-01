@@ -38,12 +38,14 @@ public class ParquetReadWriteTest {
             writer.write(b.build(new Object[]{2L, "hello2"}));
         }
 
-        try (Stream<Object[]> s = ParquetReader.readFile(parquet)) {
-            List<Object[]> result = s.collect(Collectors.toList());
+        try (Stream<ParquetRecord> s = ParquetReader.readFile(parquet)) {
+            List<Object[]> result = s
+                    .map(ParquetRecord::getData)
+                    .collect(Collectors.toList());
 
             assertThat(result, hasItems(
-                    new Object[] {"1", "hello1"},
-                    new Object[] {"2", "hello2"}));
+                    new Object[] {1L, "hello1"},
+                    new Object[] {2L, "hello2"}));
         }
     }
 }

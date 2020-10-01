@@ -48,6 +48,10 @@ public final class ParquetRecord {
                 .collect(Collectors.toMap(i -> header[i], Function.identity()));
     }
 
+    public Object[] getData() {
+        return data;
+    }
+
     public interface ValueVisitor {
         void visit(String name, PrimitiveType.PrimitiveTypeName type, Object value);
     }

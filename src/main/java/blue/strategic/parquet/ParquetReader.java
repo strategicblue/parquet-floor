@@ -32,7 +32,7 @@ import java.util.stream.StreamSupport;
 
 public class ParquetReader {
 
-    public static Stream<Object[]> readFile(File file) throws IOException {
+    public static Stream<ParquetRecord> readFile(File file) throws IOException {
         InputFile f = new InputFile() {
             @Override
             public long getLength() {
@@ -61,7 +61,7 @@ public class ParquetReader {
         return readInputFile(f);
     }
 
-    private static Stream<Object[]> readInputFile(InputFile file) throws IOException {
+    private static Stream<ParquetRecord> readInputFile(InputFile file) throws IOException {
         ParquetFileReader reader = ParquetFileReader.open(file);
         return StreamSupport
                 .stream(new PqSpliterator(reader, Collections.emptySet()), false)
@@ -76,12 +76,13 @@ public class ParquetReader {
         }
     }
 
-    private static class PqSpliterator implements Spliterator<Object[]> {
+    private static class PqSpliterator implements Spliterator<ParquetRecord> {
         private final ParquetFileReader reader;
         private final List<ColumnDescriptor> columns;
         private final MessageType schema;
         private final GroupConverter recordConverter;
         private final String createdBy;
+        private final ParquetRecord.Builder recordBuilder;
 
         private boolean finished = false;
         private long currentRowGroupSize = -1L;
@@ -99,10 +100,12 @@ public class ParquetReader {
             this.columns = schema.getColumns().stream()
                     .filter(c -> columnNames.isEmpty() || columnNames.contains(Arrays.deepToString(c.getPath())))
                     .collect(Collectors.toList());
+
+            this.recordBuilder = ParquetRecord.builder(schema);
         }
 
         @Override
-        public boolean tryAdvance(Consumer<? super Object[]> action) {
+        public boolean tryAdvance(Consumer<? super ParquetRecord> action) {
             try {
                 if (this.finished) {
                     return false;
@@ -123,16 +126,16 @@ public class ParquetReader {
                 }
 
                 action.accept(
-                        this.currentRowGroupColumnReaders.stream()
-                        .map(columnReader -> {
-                            String value = readValue(columnReader);
-//                            String[] columnName = columnReader.getDescriptor().getPath();
-                            columnReader.consume();
-                            if (columnReader.getCurrentRepetitionLevel() != 0) {
-                                throw new IllegalStateException("Unexpected repetition");
-                            }
-                            return value;
-                        }).toArray());
+                        recordBuilder.build(
+                                this.currentRowGroupColumnReaders.stream()
+                                        .map(columnReader -> {
+                                            Object value = readValue(columnReader);
+                                            columnReader.consume();
+                                            if (columnReader.getCurrentRepetitionLevel() != 0) {
+                                                throw new IllegalStateException("Unexpected repetition");
+                                            }
+                                            return value;
+                                        }).toArray()));
 
                 this.currentRowIndex ++;
 
@@ -143,7 +146,7 @@ public class ParquetReader {
         }
 
         @Override
-        public Spliterator<Object[]> trySplit() {
+        public Spliterator<ParquetRecord> trySplit() {
             return null;
         }
 
@@ -158,7 +161,7 @@ public class ParquetReader {
         }
     }
 
-    private static String readValue(ColumnReader columnReader) {
+    private static Object readValue(ColumnReader columnReader) {
         ColumnDescriptor column = columnReader.getDescriptor();
         PrimitiveType primitiveType = column.getPrimitiveType();
         PrimitiveStringifier stringifier = primitiveType.stringifier();
@@ -171,15 +174,15 @@ public class ParquetReader {
                 case INT96:
                     return stringifier.stringify(columnReader.getBinary());
                 case BOOLEAN:
-                    return stringifier.stringify(columnReader.getBoolean());
+                    return columnReader.getBoolean();
                 case DOUBLE:
-                    return stringifier.stringify(columnReader.getDouble());
+                    return columnReader.getDouble();
                 case FLOAT:
-                    return stringifier.stringify(columnReader.getFloat());
+                    return columnReader.getFloat();
                 case INT32:
-                    return stringifier.stringify(columnReader.getInteger());
+                    return columnReader.getInteger();
                 case INT64:
-                    return stringifier.stringify(columnReader.getLong());
+                    return columnReader.getLong();
                 default:
                     throw new IllegalArgumentException("Unsupported type: " + primitiveType);
             }
