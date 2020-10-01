@@ -10,8 +10,10 @@ import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,9 +21,12 @@ import java.io.IOException;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
-public class ParquetWriter {
+public class ParquetWriter implements Closeable {
 
-    public static void writeFile(File out) throws IOException {
+    private final org.apache.parquet.hadoop.ParquetWriter<Group> writer;
+    private final MessageType schema;
+
+    public static ParquetWriter writeFile(MessageType schema, File out) throws IOException {
         OutputFile f = new OutputFile() {
             @Override
             public PositionOutputStream create(long blockSizeHint) throws IOException {
@@ -49,28 +54,59 @@ public class ParquetWriter {
                 return 1024L;
             }
         };
-        writeOutputFile(f);
+        return writeOutputFile(schema, f);
     }
 
-    private static void writeOutputFile(OutputFile file) throws IOException {
-        MessageType schema = new MessageType("foo",
-                Types.required(INT64).named("id"),
-                Types.required(BINARY).as(LogicalTypeAnnotation.stringType()).named("email")
-        );
+    private static ParquetWriter writeOutputFile(MessageType schema, OutputFile file) throws IOException {
+        return new ParquetWriter(file, schema);
+    }
 
-        ExampleParquetWriter.Builder writerBuilder = ExampleParquetWriter.builder(file)
-                .withType(schema)
-                .withCompressionCodec(CompressionCodecName.SNAPPY);
-
-        try (org.apache.parquet.hadoop.ParquetWriter<Group> writer = writerBuilder.build()) {
-            SimpleGroup a = new SimpleGroup(schema);
-            a.add("id", 1L);
-            a.add("email", Binary.fromString("hello1"));
-            writer.write(a);
-            SimpleGroup b = new SimpleGroup(schema);
-            b.add("id", 2L);
-            b.add("email", Binary.fromString("hello2"));
-            writer.write(b);
+    private static void writeValue(Group group, String heading, PrimitiveType.PrimitiveTypeName type, Object value) {
+        switch (type) {
+            case INT64:
+                group.add(heading, (long) value);
+                break;
+            case INT32:
+                group.add(heading, (int) value);
+                break;
+            case BOOLEAN:
+                group.add(heading, (boolean) value);
+                break;
+            case FLOAT:
+                group.add(heading, (float) value);
+                break;
+            case DOUBLE:
+                group.add(heading, (double) value);
+                break;
+            case BINARY:
+            case FIXED_LEN_BYTE_ARRAY:
+            case INT96:
+                group.add(heading, Binary.fromString((String) value));
+                break;
         }
     }
+
+    private ParquetWriter(OutputFile outputFile, MessageType schema) throws IOException {
+        this.schema = schema;
+        this.writer = ExampleParquetWriter.builder(outputFile)
+                .withType(schema)
+                .withCompressionCodec(CompressionCodecName.SNAPPY)
+                .build();
+    }
+
+    public void write(ParquetRecord record) throws IOException {
+        SimpleGroup a = new SimpleGroup(this.schema);
+
+        record.forEach((heading, type, value) -> {
+            writeValue(a, heading, type, value);
+        });
+
+        writer.write(a);
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.writer.close();
+    }
+
 }
