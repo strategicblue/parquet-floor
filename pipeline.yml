@@ -50,13 +50,8 @@ jobs:
       - path: maven
       run:
         dir: parquet-floor
-        path: sh
-        args:
-        - -c
-        - |
-          set -e
-          rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
-          mvn checkstyle:check
+        path: scripts/run-mvn.sh
+        args: [ checkstyle:check ]
     on_failure: &report_to_slack
       params:
         silent: true
@@ -75,13 +70,8 @@ jobs:
       <<: *basic_config
       run:
         dir: parquet-floor
-        path: sh
-        args:
-        - -c
-        - |
-          set -e
-          rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
-          mvn test
+        path: scripts/run-mvn.sh
+        args: [ test ]
     on_failure: *report_to_slack
 
 - name: dependencies
@@ -107,10 +97,7 @@ jobs:
         path: sh
         args:
         - -c
-        - |
-          set -e
-          rm -rf "${HOME}/.m2" && mkdir -p '../maven/repository' && ln -s "$(readlink -f ../maven)" "${HOME}/.m2"
-          mvn versions:use-latest-releases && git commit -m "Upgrade dependency versions."
+        - scripts/run-mvn.sh versions:use-latest-releases && git commit -m "Upgrade dependency versions."
     on_failure: *report_to_slack
   - put: parquet-floor
     params:
