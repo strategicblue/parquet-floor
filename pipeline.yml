@@ -124,7 +124,7 @@ jobs:
         path: sh
         args:
         - -c
-        - scripts/run-mvn.sh versions:use-latest-releases && git commit -m "Upgrade dependency versions."
+        - scripts/run-mvn.sh versions:use-latest-releases && git commit -am "Upgrade dependency versions." || true
     on_failure: *report_to_slack
   - put: parquet-floor
     params:
