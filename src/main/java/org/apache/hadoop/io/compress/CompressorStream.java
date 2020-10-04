@@ -24,7 +24,7 @@ import java.io.OutputStream;
 public class CompressorStream extends CompressionOutputStream {
     protected Compressor compressor;
     protected byte[] buffer;
-    protected boolean closed = false;
+    protected boolean closed;
 
     public CompressorStream(OutputStream out, Compressor compressor, int bufferSize) {
         super(out);
@@ -97,8 +97,7 @@ public class CompressorStream extends CompressionOutputStream {
         if (!closed) {
             try {
                 super.close();
-            }
-            finally {
+            } finally {
                 closed = true;
             }
         }

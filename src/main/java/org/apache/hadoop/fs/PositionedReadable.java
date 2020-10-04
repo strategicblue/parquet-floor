@@ -17,8 +17,8 @@
  */
 package org.apache.hadoop.fs;
 
-import java.io.*;
-
+import java.io.EOFException;
+import java.io.IOException;
 
 /**
  * Stream that permits positional reading.

@@ -1,7 +1,8 @@
 package org.apache.hadoop.io.compress;
 
-public class CodecPool {
+public final class CodecPool {
 
+    private CodecPool() { /* prevent instantiation */ }
     public static Decompressor getDecompressor(CompressionCodec codec) {
         return codec.createDecompressor();
     }

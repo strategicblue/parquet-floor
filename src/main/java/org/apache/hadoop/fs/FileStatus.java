@@ -16,6 +16,6 @@ public class FileStatus {
     }
 
     public long getLen() {
-        return path.file.length();
+        return path.file().length();
     }
 }

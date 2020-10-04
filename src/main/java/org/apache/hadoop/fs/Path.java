@@ -6,7 +6,7 @@ import java.io.File;
 
 public class Path {
 
-    public final File file;
+    private final File file;
 
     public Path(String path) {
         file = new File(path);
@@ -14,5 +14,9 @@ public class Path {
 
     public FileSystem getFileSystem(Configuration conf) {
         return new FileSystem();
+    }
+
+    public File file() {
+        return file;
     }
 }

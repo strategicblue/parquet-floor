@@ -2,7 +2,6 @@ package org.apache.hadoop.fs;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 
@@ -10,7 +9,7 @@ public class FSDataOutputStream extends OutputStream {
     private final RandomAccessFile output;
 
     public FSDataOutputStream(org.apache.hadoop.fs.Path p) throws FileNotFoundException {
-        this.output = new RandomAccessFile(p.file, "rw");
+        this.output = new RandomAccessFile(p.file(), "rw");
     }
 
     @Override

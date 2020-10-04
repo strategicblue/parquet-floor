@@ -30,7 +30,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class ParquetReader {
+public final class ParquetReader {
+
+    private ParquetReader() { /* prevent instantiation */ };
 
     public static Stream<ParquetRecord> readFile(File file) throws IOException {
         InputFile f = new InputFile() {
@@ -43,7 +45,7 @@ public class ParquetReader {
             public SeekableInputStream newStream() throws IOException {
                 FileInputStream fis = new FileInputStream(file);
                 return new DelegatingSeekableInputStream(fis) {
-                    long position = 0L;
+                    private long position;
 
                     @Override
                     public long getPos() {
@@ -68,7 +70,7 @@ public class ParquetReader {
                 .onClose(() -> closeSilently(reader));
     }
 
-    private static void closeSilently (Closeable resource) {
+    private static void closeSilently(Closeable resource) {
         try {
             resource.close();
         } catch (Exception e) {
@@ -84,12 +86,12 @@ public class ParquetReader {
         private final String createdBy;
         private final ParquetRecord.Builder recordBuilder;
 
-        private boolean finished = false;
+        private boolean finished;
         private long currentRowGroupSize = -1L;
         private List<ColumnReader> currentRowGroupColumnReaders;
         private long currentRowIndex = -1L;
 
-        public PqSpliterator(ParquetFileReader reader, Set<String> columnNames) {
+        PqSpliterator(ParquetFileReader reader, Set<String> columnNames) {
             this.reader = reader;
 
             FileMetaData meta = reader.getFooter().getFileMetaData();
@@ -137,7 +139,7 @@ public class ParquetReader {
                                             return value;
                                         }).toArray()));
 
-                this.currentRowIndex ++;
+                this.currentRowIndex++;
 
                 return true;
             } catch (Exception e) {
@@ -169,22 +171,22 @@ public class ParquetReader {
 
         if (columnReader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
             switch (primitiveType.getPrimitiveTypeName()) {
-                case BINARY:
-                case FIXED_LEN_BYTE_ARRAY:
-                case INT96:
-                    return stringifier.stringify(columnReader.getBinary());
-                case BOOLEAN:
-                    return columnReader.getBoolean();
-                case DOUBLE:
-                    return columnReader.getDouble();
-                case FLOAT:
-                    return columnReader.getFloat();
-                case INT32:
-                    return columnReader.getInteger();
-                case INT64:
-                    return columnReader.getLong();
-                default:
-                    throw new IllegalArgumentException("Unsupported type: " + primitiveType);
+            case BINARY:
+            case FIXED_LEN_BYTE_ARRAY:
+            case INT96:
+                return stringifier.stringify(columnReader.getBinary());
+            case BOOLEAN:
+                return columnReader.getBoolean();
+            case DOUBLE:
+                return columnReader.getDouble();
+            case FLOAT:
+                return columnReader.getFloat();
+            case INT32:
+                return columnReader.getInteger();
+            case INT64:
+                return columnReader.getLong();
+            default:
+                throw new IllegalArgumentException("Unsupported type: " + primitiveType);
             }
         } else {
             return null;

@@ -9,7 +9,7 @@ public class FSDataInputStream extends InputStream {
     private final RandomAccessFile input;
 
     public FSDataInputStream(org.apache.hadoop.fs.Path p) throws FileNotFoundException {
-        this.input = new RandomAccessFile(p.file, "r");
+        this.input = new RandomAccessFile(p.file(), "r");
     }
 
     @Override

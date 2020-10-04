@@ -106,7 +106,7 @@ public final class ParquetRecord {
             ColumnDescriptor column = columns.get(i);
             String[] path = column.getPath();
             Preconditions.checkState(path.length == 1, "Deep path! " + Arrays.deepToString(path));
-            header[i] = (path[0]);
+            header[i] = path[0];
             types[i] = column.getPrimitiveType().getPrimitiveTypeName();
         }
 

@@ -3,7 +3,10 @@ package org.apache.hadoop.util;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 
-public class ReflectionUtils {
+public final class ReflectionUtils {
+
+    private ReflectionUtils() { /* prevent instantitation */ }
+
     public static Object newInstance(Class<?> type, Configuration x) {
         try {
             Object o = type.newInstance();

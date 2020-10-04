@@ -36,11 +36,11 @@ public class DecompressorStream extends CompressionInputStream {
     private byte[] skipBytes;
     private byte[] oneByte = new byte[1];
 
-    protected Decompressor decompressor = null;
+    protected Decompressor decompressor;
     protected byte[] buffer;
-    protected boolean eof = false;
-    protected boolean closed = false;
-    private int lastBytesSent = 0;
+    protected boolean eof;
+    protected boolean closed;
+    private int lastBytesSent;
 
     DecompressorStream(InputStream in, Decompressor decompressor,
                        int bufferSize, int skipBufferSize)
@@ -129,7 +129,7 @@ public class DecompressorStream extends CompressionInputStream {
                     // other engine) and buffers, then "resend" remaining input data
                     decompressor.reset();
                     int leftoverOffset = lastBytesSent - nRemaining;
-                    assert (leftoverOffset >= 0);
+                    assert leftoverOffset >= 0;
                     // this recopies userBuf -> direct buffer if using native libraries:
                     decompressor.setInput(buffer, leftoverOffset, nRemaining);
                     // NOTE:  this is the one place we do NOT want to save the number
@@ -194,7 +194,7 @@ public class DecompressorStream extends CompressionInputStream {
         // Read 'n' bytes
         int skipped = 0;
         while (skipped < n) {
-            int len = Math.min(((int)n - skipped), skipBytes.length);
+            int len = Math.min((int)n - skipped, skipBytes.length);
             len = read(skipBytes, 0, len);
             if (len == -1) {
                 eof = true;
@@ -208,7 +208,7 @@ public class DecompressorStream extends CompressionInputStream {
     @Override
     public int available() throws IOException {
         checkStream();
-        return (eof) ? 0 : 1;
+        return eof ? 0 : 1;
     }
 
     @Override

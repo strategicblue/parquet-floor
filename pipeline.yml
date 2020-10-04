@@ -51,7 +51,7 @@ jobs:
       run:
         dir: parquet-floor
         path: scripts/run-mvn.sh
-        args: [ checkstyle:check ]
+        args: [ "checkstyle:check", "-Dcheckstyle.config.location=checkstyle.xml" ]
     on_failure: &report_to_slack
       params:
         silent: true

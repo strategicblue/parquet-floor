@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.fs;
 
-import java.io.*;
+import java.io.IOException;
 
 /**
  *  Stream that permits seeking.

@@ -8,20 +8,15 @@ import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Types;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-
-public class ParquetWriter implements Closeable {
+public final class ParquetWriter implements Closeable {
 
     private final org.apache.parquet.hadoop.ParquetWriter<Group> writer;
     private final MessageType schema;
@@ -63,26 +58,28 @@ public class ParquetWriter implements Closeable {
 
     private static void writeValue(Group group, String heading, PrimitiveType.PrimitiveTypeName type, Object value) {
         switch (type) {
-            case INT64:
-                group.add(heading, (long) value);
-                break;
-            case INT32:
-                group.add(heading, (int) value);
-                break;
-            case BOOLEAN:
-                group.add(heading, (boolean) value);
-                break;
-            case FLOAT:
-                group.add(heading, (float) value);
-                break;
-            case DOUBLE:
-                group.add(heading, (double) value);
-                break;
-            case BINARY:
-            case FIXED_LEN_BYTE_ARRAY:
-            case INT96:
-                group.add(heading, Binary.fromString((String) value));
-                break;
+        case INT64:
+            group.add(heading, (long) value);
+            break;
+        case INT32:
+            group.add(heading, (int) value);
+            break;
+        case BOOLEAN:
+            group.add(heading, (boolean) value);
+            break;
+        case FLOAT:
+            group.add(heading, (float) value);
+            break;
+        case DOUBLE:
+            group.add(heading, (double) value);
+            break;
+        case BINARY:
+        case FIXED_LEN_BYTE_ARRAY:
+        case INT96:
+            group.add(heading, Binary.fromString((String) value));
+            break;
+        default:
+            throw new IllegalArgumentException("Unsupported type: " + type);
         }
     }
 
