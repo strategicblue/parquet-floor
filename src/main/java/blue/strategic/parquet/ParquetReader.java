@@ -32,7 +32,7 @@ import java.util.stream.StreamSupport;
 
 public final class ParquetReader {
 
-    private ParquetReader() { /* prevent instantiation */ };
+    private ParquetReader() { /* prevent instantiation */ }
 
     public static Stream<ParquetRecord> readFile(File file) throws IOException {
         InputFile f = new InputFile() {
@@ -63,7 +63,7 @@ public final class ParquetReader {
         return readInputFile(f);
     }
 
-    private static Stream<ParquetRecord> readInputFile(InputFile file) throws IOException {
+    public static Stream<ParquetRecord> readInputFile(InputFile file) throws IOException {
         ParquetFileReader reader = ParquetFileReader.open(file);
         return StreamSupport
                 .stream(new PqSpliterator(reader, Collections.emptySet()), false)
