@@ -1,15 +1,12 @@
 package blue.strategic.parquet;
 
-import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.Closeable;
 import java.io.File;
@@ -18,10 +15,9 @@ import java.io.IOException;
 
 public final class ParquetWriter implements Closeable {
 
-    private final org.apache.parquet.hadoop.ParquetWriter<Group> writer;
-    private final MessageType schema;
+    private final org.apache.parquet.hadoop.ParquetWriter<Object> writer;
 
-    public static ParquetWriter writeFile(MessageType schema, File out) throws IOException {
+    public static ParquetWriter writeFile(MessageType schema, File out, Dehydrator dehydrator) throws IOException {
         OutputFile f = new OutputFile() {
             @Override
             public PositionOutputStream create(long blockSizeHint) throws IOException {
@@ -49,56 +45,23 @@ public final class ParquetWriter implements Closeable {
                 return 1024L;
             }
         };
-        return writeOutputFile(schema, f);
+        return writeOutputFile(schema, f, dehydrator);
     }
 
-    private static ParquetWriter writeOutputFile(MessageType schema, OutputFile file) throws IOException {
-        return new ParquetWriter(file, schema);
+    private static ParquetWriter writeOutputFile(MessageType schema, OutputFile file, Dehydrator dehydrator) throws IOException {
+        return new ParquetWriter(file, schema, dehydrator);
     }
 
-    private static void writeValue(Group group, String heading, PrimitiveType.PrimitiveTypeName type, Object value) {
-        switch (type) {
-        case INT64:
-            group.add(heading, (long) value);
-            break;
-        case INT32:
-            group.add(heading, (int) value);
-            break;
-        case BOOLEAN:
-            group.add(heading, (boolean) value);
-            break;
-        case FLOAT:
-            group.add(heading, (float) value);
-            break;
-        case DOUBLE:
-            group.add(heading, (double) value);
-            break;
-        case BINARY:
-        case FIXED_LEN_BYTE_ARRAY:
-        case INT96:
-            group.add(heading, Binary.fromString((String) value));
-            break;
-        default:
-            throw new IllegalArgumentException("Unsupported type: " + type);
-        }
-    }
-
-    private ParquetWriter(OutputFile outputFile, MessageType schema) throws IOException {
-        this.schema = schema;
-        this.writer = ExampleParquetWriter.builder(outputFile)
+    private ParquetWriter(OutputFile outputFile, MessageType schema, Dehydrator dehydrator) throws IOException {
+        this.writer = new Builder(outputFile)
                 .withType(schema)
+                .withDehydrator(dehydrator)
                 .withCompressionCodec(CompressionCodecName.SNAPPY)
                 .build();
     }
 
-    public void write(ParquetRecord record) throws IOException {
-        SimpleGroup a = new SimpleGroup(this.schema);
-
-        record.forEach((heading, type, value) -> {
-            writeValue(a, heading, type, value);
-        });
-
-        writer.write(a);
+    public void write(Object record) throws IOException {
+        writer.write(record);
     }
 
     @Override
@@ -106,4 +69,32 @@ public final class ParquetWriter implements Closeable {
         this.writer.close();
     }
 
+    private static class Builder extends org.apache.parquet.hadoop.ParquetWriter.Builder<Object, ParquetWriter.Builder> {
+        private MessageType schema;
+        private Dehydrator dehydrator;
+
+        private Builder(OutputFile file) {
+            super(file);
+        }
+
+        public ParquetWriter.Builder withType(MessageType schema) {
+            this.schema = schema;
+            return this;
+        }
+
+        public ParquetWriter.Builder withDehydrator(Dehydrator dehydrator) {
+            this.dehydrator = dehydrator;
+            return this;
+        }
+
+        @Override
+        protected ParquetWriter.Builder self() {
+            return this;
+        }
+
+        @Override
+        protected WriteSupport<Object> getWriteSupport(Configuration conf) {
+            return new Writificator(schema, dehydrator);
+        }
+    }
 }

@@ -31,11 +31,14 @@ public class ParquetReadWriteTest {
                 Types.required(BINARY).as(LogicalTypeAnnotation.stringType()).named("email")
         );
 
-        ParquetRecord.Builder b = ParquetRecord.builder(schema);
+        Dehydrator dehydrator = (record, valueWriter) -> {
+            valueWriter.write("id", ((Object[])record)[0]);
+            valueWriter.write("email", ((Object[])record)[1]);
+        };
 
-        try(ParquetWriter writer = ParquetWriter.writeFile(schema, parquet)) {
-            writer.write(b.build(new Object[]{1L, "hello1"}));
-            writer.write(b.build(new Object[]{2L, "hello2"}));
+        try(ParquetWriter writer = ParquetWriter.writeFile(schema, parquet, dehydrator)) {
+            writer.write(new Object[]{1L, "hello1"});
+            writer.write(new Object[]{2L, "hello2"});
         }
 
         try (Stream<ParquetRecord> s = ParquetReader.readFile(parquet)) {
