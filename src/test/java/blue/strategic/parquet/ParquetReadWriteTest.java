@@ -33,15 +33,10 @@ public class ParquetReadWriteTest {
                 Types.required(BINARY).as(LogicalTypeAnnotation.stringType()).named("email")
         );
 
-        Dehydrator dehydrator = (record, valueWriter) -> {
-            valueWriter.write("id", ((Object[])record)[0]);
-            valueWriter.write("email", ((Object[])record)[1]);
+        Dehydrator<Object[]> dehydrator = (record, valueWriter) -> {
+            valueWriter.write("id", record[0]);
+            valueWriter.write("email", record[1]);
         };
-
-        try(ParquetWriter writer = ParquetWriter.writeFile(schema, parquet, dehydrator)) {
-            writer.write(new Object[]{1L, "hello1"});
-            writer.write(new Object[]{2L, "hello2"});
-        }
 
         Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
             @Override
@@ -59,6 +54,11 @@ public class ParquetReadWriteTest {
                 return target;
             }
         };
+
+        try(ParquetWriter<Object[]> writer = ParquetWriter.writeFile(schema, parquet, dehydrator)) {
+            writer.write(new Object[]{1L, "hello1"});
+            writer.write(new Object[]{2L, "hello2"});
+        }
 
         try (Stream<Map<String, Object>> s = ParquetReader.readFile(parquet, hydrator)) {
             List<Map<String, Object>> result = s.collect(Collectors.toList());
