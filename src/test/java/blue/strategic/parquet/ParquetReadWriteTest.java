@@ -9,7 +9,9 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,14 +43,30 @@ public class ParquetReadWriteTest {
             writer.write(new Object[]{2L, "hello2"});
         }
 
-        try (Stream<ParquetRecord> s = ParquetReader.readFile(parquet)) {
-            List<Object[]> result = s
-                    .map(ParquetRecord::getData)
-                    .collect(Collectors.toList());
+        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+            @Override
+            public Map<String, Object> start() {
+                return new HashMap<>();
+            }
 
+            @Override
+            public void add(Map<String, Object> target, String heading, Object value) {
+                target.put(heading, value);
+            }
+
+            @Override
+            public Map<String, Object> finish(Map<String, Object> target) {
+                return target;
+            }
+        };
+
+        try (Stream<Map<String, Object>> s = ParquetReader.readFile(parquet, hydrator)) {
+            List<Map<String, Object>> result = s.collect(Collectors.toList());
+
+            //noinspection unchecked
             assertThat(result, hasItems(
-                    new Object[] {1L, "hello1"},
-                    new Object[] {2L, "hello2"}));
+                    Map.of("id", 1L, "email", "hello1"),
+                    Map.of("id", 2L, "email", "hello2")));
         }
     }
 }

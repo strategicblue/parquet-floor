@@ -34,7 +34,7 @@ public final class ParquetReader {
 
     private ParquetReader() { /* prevent instantiation */ }
 
-    public static Stream<ParquetRecord> readFile(File file) throws IOException {
+    public static <U, S> Stream<S> readFile(File file, Hydrator<U, S> hydrator) throws IOException {
         InputFile f = new InputFile() {
             @Override
             public long getLength() {
@@ -60,13 +60,13 @@ public final class ParquetReader {
                 };
             }
         };
-        return readInputFile(f);
+        return readInputFile(f, hydrator);
     }
 
-    public static Stream<ParquetRecord> readInputFile(InputFile file) throws IOException {
+    public static <U, S> Stream<S> readInputFile(InputFile file, Hydrator<U, S> hydrator) throws IOException {
         ParquetFileReader reader = ParquetFileReader.open(file);
         return StreamSupport
-                .stream(new PqSpliterator(reader, Collections.emptySet()), false)
+                .stream(new PqSpliterator<>(reader, Collections.emptySet(), hydrator), false)
                 .onClose(() -> closeSilently(reader));
     }
 
@@ -78,21 +78,22 @@ public final class ParquetReader {
         }
     }
 
-    private static class PqSpliterator implements Spliterator<ParquetRecord> {
+    private static class PqSpliterator<U, S> implements Spliterator<S> {
         private final ParquetFileReader reader;
+        private final Hydrator<U, S> hydrator;
         private final List<ColumnDescriptor> columns;
         private final MessageType schema;
         private final GroupConverter recordConverter;
         private final String createdBy;
-        private final ParquetRecord.Builder recordBuilder;
 
         private boolean finished;
         private long currentRowGroupSize = -1L;
         private List<ColumnReader> currentRowGroupColumnReaders;
         private long currentRowIndex = -1L;
 
-        PqSpliterator(ParquetFileReader reader, Set<String> columnNames) {
+        PqSpliterator(ParquetFileReader reader, Set<String> columnNames, Hydrator<U, S> hydrator) {
             this.reader = reader;
+            this.hydrator = hydrator;
 
             FileMetaData meta = reader.getFooter().getFileMetaData();
             this.schema = meta.getSchema();
@@ -102,12 +103,10 @@ public final class ParquetReader {
             this.columns = schema.getColumns().stream()
                     .filter(c -> columnNames.isEmpty() || columnNames.contains(Arrays.deepToString(c.getPath())))
                     .collect(Collectors.toList());
-
-            this.recordBuilder = ParquetRecord.builder(schema);
         }
 
         @Override
-        public boolean tryAdvance(Consumer<? super ParquetRecord> action) {
+        public boolean tryAdvance(Consumer<? super S> action) {
             try {
                 if (this.finished) {
                     return false;
@@ -127,18 +126,16 @@ public final class ParquetReader {
                     this.currentRowIndex = 0L;
                 }
 
-                action.accept(
-                        recordBuilder.build(
-                                this.currentRowGroupColumnReaders.stream()
-                                        .map(columnReader -> {
-                                            Object value = readValue(columnReader);
-                                            columnReader.consume();
-                                            if (columnReader.getCurrentRepetitionLevel() != 0) {
-                                                throw new IllegalStateException("Unexpected repetition");
-                                            }
-                                            return value;
-                                        }).toArray()));
+                U start = hydrator.start();
+                for (ColumnReader columnReader: this.currentRowGroupColumnReaders) {
+                    hydrator.add(start, columnReader.getDescriptor().getPath()[0], readValue(columnReader));
+                    columnReader.consume();
+                    if (columnReader.getCurrentRepetitionLevel() != 0) {
+                        throw new IllegalStateException("Unexpected repetition");
+                    }
+                }
 
+                action.accept(hydrator.finish(start));
                 this.currentRowIndex++;
 
                 return true;
@@ -148,7 +145,7 @@ public final class ParquetReader {
         }
 
         @Override
-        public Spliterator<ParquetRecord> trySplit() {
+        public Spliterator<S> trySplit() {
             return null;
         }
 
