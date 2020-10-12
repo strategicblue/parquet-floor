@@ -74,7 +74,7 @@ public final class ParquetWriter<T> implements Closeable {
         this.writer.close();
     }
 
-    private static class Builder<T> extends org.apache.parquet.hadoop.ParquetWriter.Builder<T, ParquetWriter.Builder<T>> {
+    private static final class Builder<T> extends org.apache.parquet.hadoop.ParquetWriter.Builder<T, ParquetWriter.Builder<T>> {
         private MessageType schema;
         private Dehydrator<T> dehydrator;
 
@@ -110,7 +110,7 @@ public final class ParquetWriter<T> implements Closeable {
 
         private RecordConsumer recordConsumer;
 
-        public SimpleWriteSupport(MessageType schema, Dehydrator<T> dehydrator) {
+        SimpleWriteSupport(MessageType schema, Dehydrator<T> dehydrator) {
             this.schema = schema;
             this.dehydrator = dehydrator;
         }
@@ -138,19 +138,20 @@ public final class ParquetWriter<T> implements Closeable {
             recordConsumer.startField(name, fieldIndex);
 
             switch (type.getPrimitiveTypeName()) {
-                case INT32: recordConsumer.addInteger((int)value); break;
-                case INT64: recordConsumer.addLong((long)value); break;
-                case DOUBLE: recordConsumer.addDouble((double)value); break;
-                case BOOLEAN: recordConsumer.addBoolean((boolean)value); break;
-                case FLOAT: recordConsumer.addFloat((float)value); break;
-                case BINARY: if (type.getLogicalTypeAnnotation() == LogicalTypeAnnotation.stringType()) {
+            case INT32: recordConsumer.addInteger((int)value); break;
+            case INT64: recordConsumer.addLong((long)value); break;
+            case DOUBLE: recordConsumer.addDouble((double)value); break;
+            case BOOLEAN: recordConsumer.addBoolean((boolean)value); break;
+            case FLOAT: recordConsumer.addFloat((float)value); break;
+            case BINARY:
+                if (type.getLogicalTypeAnnotation() == LogicalTypeAnnotation.stringType()) {
                     recordConsumer.addBinary(Binary.fromString((String)value));
                 } else {
                     throw new UnsupportedOperationException("We don't support writing " + type.getLogicalTypeAnnotation());
-                } break;
-                case INT96:
-                case FIXED_LEN_BYTE_ARRAY:
-                    throw new UnsupportedOperationException("We don't support writing " + type.getPrimitiveTypeName());
+                }
+                break;
+            default:
+                throw new UnsupportedOperationException("We don't support writing " + type.getPrimitiveTypeName());
             }
             recordConsumer.endField(name, fieldIndex);
         }

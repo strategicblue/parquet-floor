@@ -109,22 +109,22 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
 
         if (columnReader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
             switch (primitiveType.getPrimitiveTypeName()) {
-                case BINARY:
-                case FIXED_LEN_BYTE_ARRAY:
-                case INT96:
-                    return stringifier.stringify(columnReader.getBinary());
-                case BOOLEAN:
-                    return columnReader.getBoolean();
-                case DOUBLE:
-                    return columnReader.getDouble();
-                case FLOAT:
-                    return columnReader.getFloat();
-                case INT32:
-                    return columnReader.getInteger();
-                case INT64:
-                    return columnReader.getLong();
-                default:
-                    throw new IllegalArgumentException("Unsupported type: " + primitiveType);
+            case BINARY:
+            case FIXED_LEN_BYTE_ARRAY:
+            case INT96:
+                return stringifier.stringify(columnReader.getBinary());
+            case BOOLEAN:
+                return columnReader.getBoolean();
+            case DOUBLE:
+                return columnReader.getDouble();
+            case FLOAT:
+                return columnReader.getFloat();
+            case INT32:
+                return columnReader.getInteger();
+            case INT64:
+                return columnReader.getLong();
+            default:
+                throw new IllegalArgumentException("Unsupported type: " + primitiveType);
             }
         } else {
             return null;
