@@ -132,6 +132,11 @@ public final class ParquetWriter<T> implements Closeable {
             recordConsumer.endMessage();
         }
 
+        @Override
+        public String getName() {
+            return "ParquetFloor"; // TODO: what is a sensible name?
+        }
+
         private void writeField(String name, Object value) {
             int fieldIndex = schema.getFieldIndex(name);
             PrimitiveType type = schema.getType(fieldIndex).asPrimitiveType();
