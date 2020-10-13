@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -45,11 +46,20 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
     private long currentRowIndex = -1L;
 
     public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S> hydrator) throws IOException {
-        return streamContent(makeInputFile(file), hydrator);
+        return streamContent(file, hydrator, null);
+    }
+
+    public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+        return streamContent(makeInputFile(file), hydrator, columns);
     }
 
     public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S> hydrator) throws IOException {
-        ParquetReader<U, S> pqReader = new ParquetReader<>(file, Collections.emptySet(), hydrator);
+        return streamContent(file, hydrator, null);
+    }
+
+    public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+        Set<String> columnSet = (null == columns) ? Collections.emptySet() : Set.copyOf(columns);
+        ParquetReader<U, S> pqReader = new ParquetReader<>(file, columnSet, hydrator);
         return StreamSupport
                 .stream(pqReader, false)
                 .onClose(() -> closeSilently(pqReader));
