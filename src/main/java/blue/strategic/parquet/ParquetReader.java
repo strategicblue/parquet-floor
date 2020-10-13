@@ -21,7 +21,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -85,7 +84,7 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         this.createdBy = meta.getCreatedBy();
 
         this.columns = schema.getColumns().stream()
-                .filter(c -> columnNames.isEmpty() || columnNames.contains(Arrays.deepToString(c.getPath())))
+                .filter(c -> columnNames.isEmpty() || columnNames.contains(c.getPath()[0]))
                 .collect(Collectors.toList());
     }
 

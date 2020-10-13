@@ -9,6 +9,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,15 @@ public class ParquetReadWriteTest {
             assertThat(result, hasItems(
                     Map.of("id", 1L, "email", "hello1"),
                     Map.of("id", 2L, "email", "hello2")));
+        }
+
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator, Collections.singleton("id"))) {
+            List<Map<String, Object>> result = s.collect(Collectors.toList());
+
+            //noinspection unchecked
+            assertThat(result, hasItems(
+                    Map.of("id", 1L),
+                    Map.of("id", 2L)));
         }
     }
 }
