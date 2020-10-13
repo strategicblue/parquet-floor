@@ -8,6 +8,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.DummyRecordConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
@@ -54,13 +55,13 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
                 .onClose(() -> closeSilently(pqReader));
     }
 
-    public static FileMetaData readMetadata(File file) throws IOException {
+    public static ParquetMetadata readMetadata(File file) throws IOException {
         return readMetadata(makeInputFile(file));
     }
 
-    public static FileMetaData readMetadata(InputFile file) throws IOException {
+    public static ParquetMetadata readMetadata(InputFile file) throws IOException {
         try (ParquetFileReader reader = ParquetFileReader.open(file)) {
-            return reader.getFileMetaData();
+            return reader.getFooter();
         }
     }
 
