@@ -43,40 +43,25 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
     private List<ColumnReader> currentRowGroupColumnReaders;
     private long currentRowIndex = -1L;
 
-    public static <U, S> Stream<S> readFile(File file, Hydrator<U, S> hydrator) throws IOException {
-        InputFile f = new InputFile() {
-            @Override
-            public long getLength() {
-                return file.length();
-            }
-
-            @Override
-            public SeekableInputStream newStream() throws IOException {
-                FileInputStream fis = new FileInputStream(file);
-                return new DelegatingSeekableInputStream(fis) {
-                    private long position;
-
-                    @Override
-                    public long getPos() {
-                        return position;
-                    }
-
-                    @Override
-                    public void seek(long newPos) throws IOException {
-                        fis.getChannel().position(newPos);
-                        position = newPos;
-                    }
-                };
-            }
-        };
-        return readInputFile(f, hydrator);
+    public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S> hydrator) throws IOException {
+        return streamContent(makeInputFile(file), hydrator);
     }
 
-    public static <U, S> Stream<S> readInputFile(InputFile file, Hydrator<U, S> hydrator) throws IOException {
+    public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S> hydrator) throws IOException {
         ParquetReader<U, S> pqReader = new ParquetReader<>(file, Collections.emptySet(), hydrator);
         return StreamSupport
                 .stream(pqReader, false)
                 .onClose(() -> closeSilently(pqReader));
+    }
+
+    public static FileMetaData readMetadata(File file) throws IOException {
+        return readMetadata(makeInputFile(file));
+    }
+
+    public static FileMetaData readMetadata(InputFile file) throws IOException {
+        try (ParquetFileReader reader = ParquetFileReader.open(file)) {
+            return reader.getFileMetaData();
+        }
     }
 
     private ParquetReader(InputFile file, Set<String> columnNames, Hydrator<U, S> hydrator) throws IOException {
@@ -188,5 +173,37 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
     @Override
     public int characteristics() {
         return ORDERED | NONNULL | DISTINCT;
+    }
+
+    public FileMetaData metaData() {
+        return this.reader.getFileMetaData();
+    }
+
+    private static InputFile makeInputFile(File file) {
+        return new InputFile() {
+            @Override
+            public long getLength() {
+                return file.length();
+            }
+
+            @Override
+            public SeekableInputStream newStream() throws IOException {
+                FileInputStream fis = new FileInputStream(file);
+                return new DelegatingSeekableInputStream(fis) {
+                    private long position;
+
+                    @Override
+                    public long getPos() {
+                        return position;
+                    }
+
+                    @Override
+                    public void seek(long newPos) throws IOException {
+                        fis.getChannel().position(newPos);
+                        position = newPos;
+                    }
+                };
+            }
+        };
     }
 }

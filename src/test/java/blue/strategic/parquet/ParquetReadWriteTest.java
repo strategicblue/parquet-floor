@@ -60,7 +60,7 @@ public class ParquetReadWriteTest {
             writer.write(new Object[]{2L, "hello2"});
         }
 
-        try (Stream<Map<String, Object>> s = ParquetReader.readFile(parquet, hydrator)) {
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator)) {
             List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             //noinspection unchecked
