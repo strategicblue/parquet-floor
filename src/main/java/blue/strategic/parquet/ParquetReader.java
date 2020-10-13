@@ -153,16 +153,16 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
                 this.currentRowIndex = 0L;
             }
 
-            U start = hydrator.start();
+            U record = hydrator.start();
             for (ColumnReader columnReader: this.currentRowGroupColumnReaders) {
-                hydrator.add(start, columnReader.getDescriptor().getPath()[0], readValue(columnReader));
+                record = hydrator.add(record, columnReader.getDescriptor().getPath()[0], readValue(columnReader));
                 columnReader.consume();
                 if (columnReader.getCurrentRepetitionLevel() != 0) {
                     throw new IllegalStateException("Unexpected repetition");
                 }
             }
 
-            action.accept(hydrator.finish(start));
+            action.accept(hydrator.finish(record));
             this.currentRowIndex++;
 
             return true;

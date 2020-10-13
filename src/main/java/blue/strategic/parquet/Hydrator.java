@@ -16,8 +16,9 @@ public interface Hydrator<U, S> {
      * @param target object being hydrated
      * @param heading the name of the column whose value is being applied
      * @param value the value to apply
+     * @return the new target
      */
-    void add(U target, String heading, Object value);
+    U add(U target, String heading, Object value);
 
     /**
      * Seals the mutable hydration target.

@@ -45,8 +45,10 @@ public class ParquetReadWriteTest {
             }
 
             @Override
-            public void add(Map<String, Object> target, String heading, Object value) {
-                target.put(heading, value);
+            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+                HashMap<String, Object> r = new HashMap<>(target);
+                r.put(heading, value);
+                return r;
             }
 
             @Override
