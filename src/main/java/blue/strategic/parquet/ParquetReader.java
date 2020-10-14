@@ -57,11 +57,30 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
     }
 
     public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+        return stream(spliterator(file, hydrator, columns));
+    }
+
+    public static <U, S> ParquetReader<U, S> spliterator(File file, Hydrator<U, S> hydrator) throws IOException {
+        return spliterator(file, hydrator, null);
+    }
+
+    public static <U, S> ParquetReader<U, S> spliterator(File file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+        return spliterator(makeInputFile(file), hydrator, columns);
+    }
+
+    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, Hydrator<U, S> hydrator) throws IOException {
+        return spliterator(file, hydrator, null);
+    }
+
+    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
         Set<String> columnSet = (null == columns) ? Collections.emptySet() : Set.copyOf(columns);
-        ParquetReader<U, S> pqReader = new ParquetReader<>(file, columnSet, hydrator);
+        return new ParquetReader<>(file, columnSet, hydrator);
+    }
+
+    public static <U, S> Stream<S> stream(ParquetReader<U, S> reader) {
         return StreamSupport
-                .stream(pqReader, false)
-                .onClose(() -> closeSilently(pqReader));
+                .stream(reader, false)
+                .onClose(() -> closeSilently(reader));
     }
 
     public static ParquetMetadata readMetadata(File file) throws IOException {

@@ -26,7 +26,7 @@ public class ParquetReadWriteTest {
     public TemporaryFolder folder= new TemporaryFolder();
 
     @Test
-    public void testUsingTempFolder() throws IOException {
+    public void writes_and_reads_parquet() throws IOException {
         File parquet = new File(folder.getRoot(), "foo.parquet");
 
         MessageType schema = new MessageType("foo",
