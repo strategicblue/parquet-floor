@@ -204,8 +204,8 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         return ORDERED | NONNULL | DISTINCT;
     }
 
-    public FileMetaData metaData() {
-        return this.reader.getFileMetaData();
+    public ParquetMetadata metaData() {
+        return this.reader.getFooter();
     }
 
     private static InputFile makeInputFile(File file) {
