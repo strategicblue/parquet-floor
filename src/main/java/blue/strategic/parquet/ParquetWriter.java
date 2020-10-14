@@ -134,7 +134,7 @@ public final class ParquetWriter<T> implements Closeable {
 
         @Override
         public String getName() {
-            return "ParquetFloor"; // TODO: what is a sensible name?
+            return "blue.strategic.parquet.ParquetWriter";
         }
 
         private void writeField(String name, Object value) {
