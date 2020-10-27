@@ -63,7 +63,7 @@ public class ParquetReadWriteTest {
             writer.write(new Object[]{2L, "hello2"});
         }
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator)) {
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
             List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             //noinspection unchecked
@@ -72,7 +72,7 @@ public class ParquetReadWriteTest {
                     Map.of("id", 2L, "email", "hello2")));
         }
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator, Collections.singleton("id"))) {
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator), Collections.singleton("id"))) {
             List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             //noinspection unchecked

@@ -43,35 +43,35 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
     private List<ColumnReader> currentRowGroupColumnReaders;
     private long currentRowIndex = -1L;
 
-    public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S> hydrator) throws IOException {
+    public static <U, S> Stream<S> streamContent(File file, HydratorSupplier<U, S> hydrator) throws IOException {
         return streamContent(file, hydrator, null);
     }
 
-    public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+    public static <U, S> Stream<S> streamContent(File file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
         return streamContent(makeInputFile(file), hydrator, columns);
     }
 
-    public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S> hydrator) throws IOException {
+    public static <U, S> Stream<S> streamContent(InputFile file, HydratorSupplier<U, S> hydrator) throws IOException {
         return streamContent(file, hydrator, null);
     }
 
-    public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+    public static <U, S> Stream<S> streamContent(InputFile file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
         return stream(spliterator(file, hydrator, columns));
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(File file, Hydrator<U, S> hydrator) throws IOException {
+    public static <U, S> ParquetReader<U, S> spliterator(File file, HydratorSupplier<U, S> hydrator) throws IOException {
         return spliterator(file, hydrator, null);
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(File file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+    public static <U, S> ParquetReader<U, S> spliterator(File file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
         return spliterator(makeInputFile(file), hydrator, columns);
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, Hydrator<U, S> hydrator) throws IOException {
+    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, HydratorSupplier<U, S> hydrator) throws IOException {
         return spliterator(file, hydrator, null);
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, Hydrator<U, S> hydrator, Collection<String> columns) throws IOException {
+    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
         Set<String> columnSet = (null == columns) ? Collections.emptySet() : Set.copyOf(columns);
         return new ParquetReader<>(file, columnSet, hydrator);
     }
@@ -92,10 +92,8 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         }
     }
 
-    private ParquetReader(InputFile file, Set<String> columnNames, Hydrator<U, S> hydrator) throws IOException {
+    private ParquetReader(InputFile file, Set<String> columnNames, HydratorSupplier<U, S> hydratorSupplier) throws IOException {
         this.reader = ParquetFileReader.open(file);
-        this.hydrator = hydrator;
-
         FileMetaData meta = reader.getFooter().getFileMetaData();
         this.schema = meta.getSchema();
         this.recordConverter = new DummyRecordConverter(this.schema).getRootConverter();
@@ -104,6 +102,8 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         this.columns = schema.getColumns().stream()
                 .filter(c -> columnNames.isEmpty() || columnNames.contains(c.getPath()[0]))
                 .collect(Collectors.toList());
+
+        this.hydrator = hydratorSupplier.get(this.columns);
     }
 
     private static void closeSilently(Closeable resource) {
