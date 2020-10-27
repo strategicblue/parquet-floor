@@ -206,7 +206,7 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         return this.reader.getFooter();
     }
 
-    private static InputFile makeInputFile(File file) {
+    public static InputFile makeInputFile(File file) {
         return new InputFile() {
             @Override
             public long getLength() {
