@@ -14,7 +14,6 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.Closeable;
@@ -118,7 +117,6 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
     private static Object readValue(ColumnReader columnReader) {
         ColumnDescriptor column = columnReader.getDescriptor();
         PrimitiveType primitiveType = column.getPrimitiveType();
-        PrimitiveStringifier stringifier = primitiveType.stringifier();
         int maxDefinitionLevel = column.getMaxDefinitionLevel();
 
         if (columnReader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
@@ -126,7 +124,7 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
             case BINARY:
             case FIXED_LEN_BYTE_ARRAY:
             case INT96:
-                return stringifier.stringify(columnReader.getBinary());
+                return primitiveType.stringifier().stringify(columnReader.getBinary());
             case BOOLEAN:
                 return columnReader.getBoolean();
             case DOUBLE:
