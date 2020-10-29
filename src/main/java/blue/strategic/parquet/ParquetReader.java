@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.Spliterator;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -80,6 +81,29 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         return StreamSupport
                 .stream(reader, false)
                 .onClose(() -> closeSilently(reader));
+    }
+
+    public static Stream<String[]> streamContentToStrings(File file) throws IOException {
+        return stream(spliterator(makeInputFile(file), columns -> {
+            final AtomicInteger pos = new AtomicInteger(0);
+            return new Hydrator<String[], String[]>() {
+                @Override
+                public String[] start() {
+                    return new String[columns.size()];
+                }
+
+                @Override
+                public String[] add(String[] target, String heading, Object value) {
+                    target[pos.getAndIncrement()] = heading + "=" + value.toString();
+                    return target;
+                }
+
+                @Override
+                public String[] finish(String[] target) {
+                    return target;
+                }
+            };
+        }, null));
     }
 
     public static ParquetMetadata readMetadata(File file) throws IOException {
