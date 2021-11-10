@@ -31,7 +31,16 @@ resources:
 
 jobs:
 - name: codecheck
-  serial: true
+  <<: &job_setup
+    serial: true
+    build_log_retention: { builds: 100 }
+    on_failure:
+      params:
+        silent: true
+        text: |
+          <!here> Build FAILED: $BUILD_PIPELINE_NAME - $BUILD_JOB_NAME
+          $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+      put: slack-alert
   plan:
   - &checkout
     get: parquet-floor
@@ -52,16 +61,9 @@ jobs:
         dir: parquet-floor
         path: scripts/run-mvn.sh
         args: [ "checkstyle:check", "-Dcheckstyle.config.location=checkstyle.xml" ]
-    on_failure: &report_to_slack
-      params:
-        silent: true
-        text: |
-          <!here> Build FAILED: $BUILD_PIPELINE_NAME - $BUILD_JOB_NAME
-          $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
-      put: slack-alert
 
 - name: unit-tests
-  serial: true
+  <<: *job_setup
   plan:
   - <<: *checkout
   - task: test
@@ -72,10 +74,9 @@ jobs:
         dir: parquet-floor
         path: scripts/run-mvn.sh
         args: [ test ]
-    on_failure: *report_to_slack
 
 - name: release
-  serial: true
+  <<: *job_setup
   plan:
     - <<: *checkout
       passed: [unit-tests]
@@ -95,14 +96,13 @@ jobs:
         run:
           dir: parquet-floor
           path: scripts/release.sh
-      on_failure: *report_to_slack
     - put: parquet-floor
       params:
         repository: parquet-floor
       get_params: {skip_download: true}
 
 - name: dependencies
-  serial: true
+  <<: *job_setup
   plan:
   - get: every-morning
     trigger: true
@@ -125,7 +125,6 @@ jobs:
         args:
         - -c
         - scripts/run-mvn.sh versions:use-latest-releases && (git commit -am "Upgrade dependency versions." || true)
-    on_failure: *report_to_slack
   - put: parquet-floor
     params:
       repository: parquet-floor
