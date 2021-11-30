@@ -6,7 +6,7 @@
   <artifactId>parquet-floor</artifactId>
   <packaging>jar</packaging>
 
-  <version>1.30-SNAPSHOT</version>
+  <version>1.31-SNAPSHOT</version>
 
   <name>Strategic Blue Parquet Floor</name>
   <url>http://strategic-blue.com</url>
