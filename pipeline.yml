@@ -80,7 +80,7 @@ jobs:
   plan:
     - <<: *checkout
       passed: [unit-tests]
-    - task: publish-to-github-packages
+    - task: publish-to-maven-central
       timeout: 15m
       params:
         OSSRH_USERNAME: ((ossrh-token.username))
