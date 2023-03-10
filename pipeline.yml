@@ -83,8 +83,10 @@ jobs:
     - task: publish-to-github-packages
       timeout: 15m
       params:
-        GITHUB_PACKAGES_USERNAME: ((github-packages.username))
-        GITHUB_PACKAGES_TOKEN: ((github-packages.publish_token))
+        OSSRH_USERNAME: ((ossrh-token.username))
+        OSSRH_PASSWORD: ((ossrh-token.password))
+        GPG_PRIVATE_KEY: ((concourse-pgp.private_key))
+        GPG_PASSPHRASE: ((concourse-pgp-passphrase))
         GIT_AUTHOR_NAME: 'Releaser'
         GIT_AUTHOR_EMAIL: 'systems@strategic-blue.com'
         GIT_COMMITTER_NAME: 'Releaser'
@@ -124,7 +126,7 @@ jobs:
         path: sh
         args:
         - -c
-        - scripts/run-mvn.sh versions:use-latest-releases && (git commit -am "Upgrade dependency versions." || true)
+        - scripts/run-mvn.sh versions:use-latest-releases -P dependencies && (git commit -am "Upgrade dependency versions." || true)
   - put: parquet-floor
     params:
       repository: parquet-floor
