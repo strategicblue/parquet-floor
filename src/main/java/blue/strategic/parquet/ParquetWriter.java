@@ -1,12 +1,12 @@
 package blue.strategic.parquet;
 
+import blue.strategic.parquet.io.FileParquetOutput;
+import blue.strategic.parquet.io.StreamParquetOutput;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
-import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -15,46 +15,23 @@ import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Collections;
 
 public final class ParquetWriter<T> implements Closeable {
 
     private final org.apache.parquet.hadoop.ParquetWriter<T> writer;
-
-    public static <T> ParquetWriter<T> writeFile(MessageType schema, File out, Dehydrator<T> dehydrator) throws IOException {
-        OutputFile f = new OutputFile() {
-            @Override
-            public PositionOutputStream create(long blockSizeHint) throws IOException {
-                return createOrOverwrite(blockSizeHint);
-            }
-
-            @Override
-            public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
-                FileOutputStream fos = new FileOutputStream(out);
-                return new DelegatingPositionOutputStream(fos) {
-                    @Override
-                    public long getPos() throws IOException {
-                        return fos.getChannel().position();
-                    }
-                };
-            }
-
-            @Override
-            public boolean supportsBlockSize() {
-                return false;
-            }
-
-            @Override
-            public long defaultBlockSize() {
-                return 1024L;
-            }
-        };
-        return writeOutputFile(schema, f, dehydrator);
+    
+    public static <T> ParquetWriter<T> writeOutputStream(MessageType schema, OutputStream out, Dehydrator<T> dehydrator) throws IOException {
+        return writeOutput(schema, new StreamParquetOutput(out), dehydrator);
     }
 
-    private static <T> ParquetWriter<T> writeOutputFile(MessageType schema, OutputFile file, Dehydrator<T> dehydrator) throws IOException {
+    public static <T> ParquetWriter<T> writeFile(MessageType schema, File out, Dehydrator<T> dehydrator) throws IOException {
+        return writeOutput(schema, new FileParquetOutput(out), dehydrator);
+    }
+
+    private static <T> ParquetWriter<T> writeOutput(MessageType schema, OutputFile file, Dehydrator<T> dehydrator) throws IOException {
         return new ParquetWriter<>(file, schema, dehydrator);
     }
 
