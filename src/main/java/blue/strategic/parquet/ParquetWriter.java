@@ -31,7 +31,7 @@ public final class ParquetWriter<T> implements Closeable {
         return writeOutput(schema, new FileParquetOutput(out), dehydrator);
     }
 
-    private static <T> ParquetWriter<T> writeOutput(MessageType schema, OutputFile file, Dehydrator<T> dehydrator) throws IOException {
+    public static <T> ParquetWriter<T> writeOutput(MessageType schema, OutputFile file, Dehydrator<T> dehydrator) throws IOException {
         return new ParquetWriter<>(file, schema, dehydrator);
     }
 
