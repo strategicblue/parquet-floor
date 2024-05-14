@@ -2,6 +2,11 @@ package org.apache.hadoop.conf;
 
 public class Configuration {
 
+    public Configuration() {
+        this(true);
+    }
+    public Configuration(boolean useDefaults) {}
+
     public boolean getBoolean(String x, boolean y) {
         return y;
     }
