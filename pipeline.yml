@@ -14,7 +14,7 @@ resources:
   source:
     uri: git@github.com:strategicblue/parquet-floor.git
     branch: master
-    private_key: ((concourse-git.private_key))
+    private_key: ((concourse-git/private_key))
 
 - name: slack-alert
   type: slack-notification
@@ -86,9 +86,9 @@ jobs:
     - task: publish-to-maven-central
       timeout: 15m
       params:
-        OSSRH_USERNAME: ((ossrh-token.username))
-        OSSRH_PASSWORD: ((ossrh-token.password))
-        GPG_PRIVATE_KEY: ((concourse-pgp.private_key))
+        OSSRH_USERNAME: ((ossrh-token/username))
+        OSSRH_PASSWORD: ((ossrh-token/password))
+        GPG_PRIVATE_KEY: ((concourse-pgp/private_key))
         GPG_PASSPHRASE: ((concourse-pgp-passphrase))
         GIT_AUTHOR_NAME: 'Releaser'
         GIT_AUTHOR_EMAIL: 'systems@strategic-blue.com'
