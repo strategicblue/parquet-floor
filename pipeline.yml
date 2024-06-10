@@ -26,8 +26,8 @@ resources:
   type: time
   icon: clock
   source:
-    start: 7:00 AM
-    stop: 7:15 AM
+    start: 5:45 AM
+    stop: 6:00 AM
     days: [Monday, Tuesday, Wednesday, Thursday, Friday]
     initial_version: true
     location: Europe/London
