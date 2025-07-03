@@ -9,7 +9,7 @@ This library is distributed via Maven Central.
 <dependency>
     <groupId>blue.strategic.parquet</groupId>
     <artifactId>parquet-floor</artifactId>
-    <version>1.36</version>
+    <version>1.51</version>
 </dependency>
 ```
 
