@@ -86,8 +86,8 @@ jobs:
     - task: publish-to-maven-central
       timeout: 15m
       params:
-        OSSRH_USERNAME: ((ossrh-token/username))
-        OSSRH_PASSWORD: ((ossrh-token/password))
+        MVN_USERNAME: ((mvn-publish-token/username))
+        MVN_PASSWORD: ((mvn-publish-token/password))
         GPG_PRIVATE_KEY: ((concourse-pgp/private_key))
         GPG_PASSPHRASE: ((concourse-pgp-passphrase))
         GIT_AUTHOR_NAME: 'Releaser'
