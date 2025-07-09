@@ -89,7 +89,7 @@ jobs:
         MVN_USERNAME: ((mvn-publish-token/username))
         MVN_PASSWORD: ((mvn-publish-token/password))
         GPG_PRIVATE_KEY: ((concourse-pgp/private_key))
-        GPG_PASSPHRASE: ((concourse-pgp-passphrase))
+        MAVEN_GPG_PASSPHRASE: ((concourse-pgp-passphrase))
         GIT_AUTHOR_NAME: 'Releaser'
         GIT_AUTHOR_EMAIL: 'systems@strategic-blue.com'
         GIT_COMMITTER_NAME: 'Releaser'
