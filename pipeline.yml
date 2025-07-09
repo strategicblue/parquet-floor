@@ -55,7 +55,7 @@ jobs:
       platform: linux
       image_resource:
         type: registry-image
-        source: {repository: maven, tag: "3-openjdk-17"}
+        source: {repository: maven, tag: "3-eclipse-temurin-21"}
       inputs:
       - name: parquet-floor
       caches:
