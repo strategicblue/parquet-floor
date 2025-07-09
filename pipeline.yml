@@ -84,7 +84,7 @@ jobs:
     - <<: *checkout
       passed: [unit-tests]
     - task: publish-to-maven-central
-      timeout: 35m
+      timeout: 55m
       params:
         MVN_USERNAME: ((mvn-publish-token/username))
         MVN_PASSWORD: ((mvn-publish-token/password))
