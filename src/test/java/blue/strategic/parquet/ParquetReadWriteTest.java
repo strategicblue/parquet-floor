@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -59,6 +60,11 @@ public class ParquetReadWriteTest {
         };
 
         try(ParquetWriter<Object[]> writer = ParquetWriter.writeFile(schema, parquet, dehydrator)) {
+            writer.write(new Object[]{1L, "hello1"});
+            writer.write(new Object[]{2L, "hello2"});
+        }
+        
+        try(ParquetWriter<Object[]> writer = ParquetWriter.writeOutputStream(schema, new FileOutputStream(parquet), dehydrator)) {
             writer.write(new Object[]{1L, "hello1"});
             writer.write(new Object[]{2L, "hello2"});
         }
