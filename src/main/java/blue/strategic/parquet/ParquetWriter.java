@@ -19,11 +19,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+
 public final class ParquetWriter<T> implements Closeable {
 
     private final org.apache.parquet.hadoop.ParquetWriter<T> writer;
 
     public static <T> ParquetWriter<T> writeFile(MessageType schema, File out, Dehydrator<T> dehydrator) throws IOException {
+        return writeFile(schema, out, dehydrator, SNAPPY);
+    }
+
+    public static <T> ParquetWriter<T> writeFile(MessageType schema, File out, Dehydrator<T> dehydrator, CompressionCodecName codecName) throws IOException {
         OutputFile f = new OutputFile() {
             @Override
             public PositionOutputStream create(long blockSizeHint) throws IOException {
@@ -51,18 +57,18 @@ public final class ParquetWriter<T> implements Closeable {
                 return 1024L;
             }
         };
-        return writeOutputFile(schema, f, dehydrator);
+        return writeOutputFile(schema, f, dehydrator, codecName);
     }
 
-    private static <T> ParquetWriter<T> writeOutputFile(MessageType schema, OutputFile file, Dehydrator<T> dehydrator) throws IOException {
-        return new ParquetWriter<>(file, schema, dehydrator);
+    private static <T> ParquetWriter<T> writeOutputFile(MessageType schema, OutputFile file, Dehydrator<T> dehydrator, CompressionCodecName codecName) throws IOException {
+        return new ParquetWriter<>(file, schema, dehydrator, codecName);
     }
 
-    private ParquetWriter(OutputFile outputFile, MessageType schema, Dehydrator<T> dehydrator) throws IOException {
+    private ParquetWriter(OutputFile outputFile, MessageType schema, Dehydrator<T> dehydrator, CompressionCodecName codecName) throws IOException {
         this.writer = new Builder<T>(outputFile)
                 .withType(schema)
                 .withDehydrator(dehydrator)
-                .withCompressionCodec(CompressionCodecName.SNAPPY)
+                .withCompressionCodec(codecName)
                 .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_2_0)
                 .build();
     }
@@ -74,6 +80,10 @@ public final class ParquetWriter<T> implements Closeable {
     @Override
     public void close() throws IOException {
         this.writer.close();
+    }
+
+    public long getDataSize() {
+        return writer.getDataSize();
     }
 
     private static final class Builder<T> extends org.apache.parquet.hadoop.ParquetWriter.Builder<T, ParquetWriter.Builder<T>> {
