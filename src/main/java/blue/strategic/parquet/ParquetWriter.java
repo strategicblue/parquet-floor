@@ -151,7 +151,8 @@ public final class ParquetWriter<T> implements Closeable {
             case BOOLEAN: recordConsumer.addBoolean((boolean)value); break;
             case FLOAT: recordConsumer.addFloat((float)value); break;
             case BINARY:
-                if (type.getLogicalTypeAnnotation() == LogicalTypeAnnotation.stringType()) {
+                if (type.getLogicalTypeAnnotation() == LogicalTypeAnnotation.stringType()
+                    || type.getLogicalTypeAnnotation() == LogicalTypeAnnotation.jsonType() ) {
                     recordConsumer.addBinary(Binary.fromString((String)value));
                 } else {
                     throw new UnsupportedOperationException("We don't support writing " + type.getLogicalTypeAnnotation());
