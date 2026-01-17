@@ -13,6 +13,7 @@ import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
@@ -24,7 +25,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.Spliterator;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -145,8 +148,14 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
 
         if (columnReader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
             switch (primitiveType.getPrimitiveTypeName()) {
-            case BINARY:
             case FIXED_LEN_BYTE_ARRAY:
+                if ( primitiveType.getLogicalTypeAnnotation() == LogicalTypeAnnotation.uuidType() ) {
+                    ByteBuffer buffer = columnReader.getBinary().toByteBuffer();
+                    long msb = buffer.getLong();
+                    long lsb = buffer.getLong();
+                    return new UUID(msb, lsb);
+                }
+            case BINARY:
             case INT96:
                 return primitiveType.stringifier().stringify(columnReader.getBinary());
             case BOOLEAN:
