@@ -1,5 +1,7 @@
 package blue.strategic.parquet;
 
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
@@ -16,9 +18,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class ParquetReadWriteTest {
@@ -58,27 +64,40 @@ public class ParquetReadWriteTest {
             }
         };
 
-        try(ParquetWriter<Object[]> writer = ParquetWriter.writeFile(schema, parquet, dehydrator)) {
-            writer.write(new Object[]{1L, "hello1"});
-            writer.write(new Object[]{2L, "hello2"});
+        for (CompressionCodecName codecName : List.of(SNAPPY, ZSTD)) {
+
+            try(ParquetWriter<Object[]> writer = ParquetWriter.writeFile(schema, parquet, dehydrator, codecName)) {
+                writer.write(new Object[]{1L, "hello1"});
+                writer.write(new Object[]{2L, "hello2"});
+
+                // TODO add better matchers to the classpath
+                assertThat("data size should be gt 10", writer.getDataSize() > 10, is(true));
+            }
+
+            ParquetMetadata metadata = ParquetReader.readMetadata(parquet);
+
+            assertThat(metadata.getBlocks().stream().findFirst().orElseThrow().toString(),
+                    containsString(codecName.name()));
+
+            try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+                List<Map<String, Object>> result = s.collect(Collectors.toList());
+
+                //noinspection unchecked
+                assertThat(result, hasItems(
+                        Map.of("id", 1L, "email", "hello1"),
+                        Map.of("id", 2L, "email", "hello2")));
+            }
+
+            try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator), Collections.singleton("id"))) {
+                List<Map<String, Object>> result = s.collect(Collectors.toList());
+
+                //noinspection unchecked
+                assertThat(result, hasItems(
+                        Map.of("id", 1L),
+                        Map.of("id", 2L)));
+            }
         }
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
-            List<Map<String, Object>> result = s.collect(Collectors.toList());
 
-            //noinspection unchecked
-            assertThat(result, hasItems(
-                    Map.of("id", 1L, "email", "hello1"),
-                    Map.of("id", 2L, "email", "hello2")));
-        }
-
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator), Collections.singleton("id"))) {
-            List<Map<String, Object>> result = s.collect(Collectors.toList());
-
-            //noinspection unchecked
-            assertThat(result, hasItems(
-                    Map.of("id", 1L),
-                    Map.of("id", 2L)));
-        }
     }
 }
