@@ -104,7 +104,7 @@ jobs:
     - put: parquet-floor
       params:
         repository: parquet-floor
-      get_params: {skip_download: true}
+      get_params: { depth: 1 }
 
 - name: dependencies
   <<: *job_setup
