@@ -1,5 +1,7 @@
 # parquet-floor
 
+[![](https://jitpack.io/v/qtsurfer/parquet-floor.svg)](https://jitpack.io/#qtsurfer/parquet-floor)
+
 A lightweight Java library that facilitates reading and writing Apache Parquet files without Hadoop dependencies.
 
 This is a fork of [strategicblue/parquet-floor](https://github.com/strategicblue/parquet-floor) with added `OutputStream` support for writing Parquet data to arbitrary output streams (e.g. S3, MinIO, network sockets).
