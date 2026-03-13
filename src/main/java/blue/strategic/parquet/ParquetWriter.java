@@ -150,6 +150,9 @@ public final class ParquetWriter<T> implements Closeable {
             case DOUBLE: recordConsumer.addDouble((double)value); break;
             case BOOLEAN: recordConsumer.addBoolean((boolean)value); break;
             case FLOAT: recordConsumer.addFloat((float)value); break;
+            case FIXED_LEN_BYTE_ARRAY:
+                recordConsumer.addBinary(Binary.fromConstantByteArray((byte[])value,0,type.getTypeLength()));
+                break;
             case BINARY:
                 if (type.getLogicalTypeAnnotation() == LogicalTypeAnnotation.stringType()) {
                     recordConsumer.addBinary(Binary.fromString((String)value));
