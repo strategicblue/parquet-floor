@@ -31,12 +31,14 @@ public class ParquetReadWriteTest {
 
         MessageType schema = new MessageType("foo",
                 Types.required(INT64).named("id"),
-                Types.required(BINARY).as(LogicalTypeAnnotation.stringType()).named("email")
+                Types.required(BINARY).as(LogicalTypeAnnotation.stringType()).named("email"),
+                Types.required(BINARY).as(LogicalTypeAnnotation.jsonType()).named("json_data")
         );
 
         Dehydrator<Object[]> dehydrator = (record, valueWriter) -> {
             valueWriter.write("id", record[0]);
             valueWriter.write("email", record[1]);
+            valueWriter.write("json_data", record[2]);
         };
 
         Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
@@ -59,8 +61,8 @@ public class ParquetReadWriteTest {
         };
 
         try(ParquetWriter<Object[]> writer = ParquetWriter.writeFile(schema, parquet, dehydrator)) {
-            writer.write(new Object[]{1L, "hello1"});
-            writer.write(new Object[]{2L, "hello2"});
+            writer.write(new Object[]{1L, "hello1", "{\"height\": \"10\"}"});
+            writer.write(new Object[]{2L, "hello2", "{\"height\": \"12\"}"});
         }
 
         try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
@@ -68,8 +70,8 @@ public class ParquetReadWriteTest {
 
             //noinspection unchecked
             assertThat(result, hasItems(
-                    Map.of("id", 1L, "email", "hello1"),
-                    Map.of("id", 2L, "email", "hello2")));
+                    Map.of("id", 1L, "email", "hello1", "json_data", "{\"height\": \"10\"}"),
+                    Map.of("id", 2L, "email", "hello2", "json_data", "{\"height\": \"12\"}")));
         }
 
         try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator), Collections.singleton("id"))) {
