@@ -175,10 +175,7 @@
               </execution>
             </executions>
             <configuration>
-              <gpgArguments>
-                <gpgArgument>--pinentry-mode</gpgArgument>
-                <gpgArgument>loopback</gpgArgument>
-              </gpgArguments>
+              <signer>bc</signer>
             </configuration>
           </plugin>
         </plugins>

@@ -12,8 +12,6 @@ git -C "${ROOT_DIR}" log -n 1 --format=%an | grep -e "${GIT_AUTHOR_NAME}" && exi
 
 sed -i 's/-SNAPSHOT//' "${ROOT_DIR}/pom.xml"
 
-echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
-
 "${ROOT_DIR}/scripts/run-mvn.sh" deploy release:update-versions -P release -Dmaven.test.skip=true
 
 git -C "${ROOT_DIR}" add 'pom.xml'
