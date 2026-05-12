@@ -13,6 +13,7 @@ import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
@@ -20,6 +21,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -156,7 +158,7 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
             case FLOAT:
                 return columnReader.getFloat();
             case INT32:
-                return columnReader.getInteger();
+                return readInt32(primitiveType, columnReader);
             case INT64:
                 return columnReader.getLong();
             default:
@@ -166,6 +168,18 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
             return null;
         }
     }
+
+    private static Object readInt32(PrimitiveType type, ColumnReader columnReader) {
+        LogicalTypeAnnotation annotation = type.getLogicalTypeAnnotation();
+        int intValue = columnReader.getInteger();
+
+        if (annotation instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation) {
+            return LocalDate.ofEpochDay(intValue);
+        }
+
+        return intValue;
+    }
+
 
     @Override
     public void close() throws IOException {
