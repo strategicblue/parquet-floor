@@ -150,5 +150,71 @@ public class RealWorldTests {
 
         assertEquals(expectedColumns, schema.getColumns());
     }
-}
 
+    @Test
+    public void streamContent_cur1() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur1.parquet")).getFile());
+
+        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+            @Override
+            public Map<String, Object> start() {
+                return new HashMap<>();
+            }
+
+            @Override
+            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+                final HashMap<String, Object> r = new HashMap<>(target);
+                r.put(heading, value);
+                return r;
+            }
+
+            @Override
+            public Map<String, Object> finish(Map<String, Object> target) {
+                return target;
+            }
+        };
+
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+            final List<Map<String, Object>> result = s.collect(Collectors.toList());
+
+            assertEquals(1036, result.size());
+            assertEquals(91, result.get(0).keySet().size());
+
+            // check types: String, Double, and Long columns
+            Map<String, Object> first = result.get(0);
+            assertEquals(String.class, first.get("bill_bill_type").getClass());
+            assertEquals(Double.class, first.get("line_item_usage_amount").getClass());
+            assertEquals(Long.class, first.get("bill_billing_period_start_date").getClass());
+
+            // check first row values
+            assertEquals("Anniversary", first.get("bill_bill_type"));
+            assertEquals("AWS", first.get("bill_billing_entity"));
+            assertEquals("Tax", first.get("line_item_line_item_type"));
+            assertEquals("AWSDataTransfer", first.get("line_item_product_code"));
+            assertEquals("USD", first.get("line_item_currency_code"));
+            assertEquals("AWS EMEA SARL", first.get("line_item_legal_entity"));
+            assertEquals(1.0, first.get("line_item_usage_amount"));
+            assertEquals(0.0, first.get("line_item_unblended_cost"));
+            assertEquals(1622505600000L, first.get("bill_billing_period_start_date"));
+            assertEquals(1625097600000L, first.get("bill_billing_period_end_date"));
+        }
+    }
+
+    @Test
+    public void readMetadata_cur1() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur1.parquet")).getFile());
+
+        ParquetMetadata metadata = ParquetReader.readMetadata(parquet);
+        MessageType schema = metadata.getFileMetaData().getSchema();
+
+        assertEquals("parquet-mr version 1.10.1 (build 815bcfa4a4aacf66d207b3dc692150d16b5740b9)",
+                metadata.getFileMetaData().getCreatedBy());
+        assertNotNull(schema);
+        assertEquals(91, schema.getColumns().size());
+        assertTrue(metadata.getFileMetaData().getKeyValueMetaData()
+                .containsKey("org.apache.spark.sql.parquet.row.metadata"));
+    }
+
+}
