@@ -17,7 +17,9 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Date;
 
 public final class ParquetWriter<T> implements Closeable {
 
@@ -145,7 +147,24 @@ public final class ParquetWriter<T> implements Closeable {
             recordConsumer.startField(name, fieldIndex);
 
             switch (type.getPrimitiveTypeName()) {
-            case INT32: recordConsumer.addInteger((int)value); break;
+            case INT32:
+                LogicalTypeAnnotation typeAnnotation = type.getLogicalTypeAnnotation();
+                if (typeAnnotation == LogicalTypeAnnotation.dateType()) {
+                    if (value instanceof Date) {
+                        long unixTimestamp = ((Date) value).getTime();
+                        long daysSinceEpoch = unixTimestamp / 86400000L;
+                        recordConsumer.addInteger((int) daysSinceEpoch);
+                    } else if (value instanceof LocalDate) {
+                        long daysSinceEpoch = ((LocalDate) value).toEpochDay();
+                        recordConsumer.addInteger((int) daysSinceEpoch);
+                    }else {
+                        throw new UnsupportedOperationException(
+                                "Unsupported class for INT32 with logical type date");
+                    }
+                } else {
+                    recordConsumer.addInteger((int) value);
+                }
+                break;
             case INT64: recordConsumer.addLong((long)value); break;
             case DOUBLE: recordConsumer.addDouble((double)value); break;
             case BOOLEAN: recordConsumer.addBoolean((boolean)value); break;
