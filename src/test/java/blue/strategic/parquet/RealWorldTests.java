@@ -6,6 +6,7 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -215,6 +216,50 @@ public class RealWorldTests {
         assertEquals(91, schema.getColumns().size());
         assertTrue(metadata.getFileMetaData().getKeyValueMetaData()
                 .containsKey("org.apache.spark.sql.parquet.row.metadata"));
+    }
+
+    @Test
+    public void readMetadata_cur2() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur2.parquet")).getFile());
+
+        ParquetMetadata metadata = ParquetReader.readMetadata(parquet);
+        MessageType schema = metadata.getFileMetaData().getSchema();
+
+        assertEquals("parquet-mr version 1.12.3 (build a182e7fc0669229eec61273c6c42f359031f239b)",
+                metadata.getFileMetaData().getCreatedBy());
+        assertNotNull(schema);
+        assertEquals(118, schema.getColumns().size());
+    }
+
+    /**
+     * cur2.parquet contains MAP columns (cost_category, discount, product, resource_tags)
+     * which use repeated fields. The library does not currently support repeated fields.
+     * This test documents the desired behaviour — ignored until repeated field support is added.
+     */
+    @Ignore("Repeated fields (MAP columns) not yet supported")
+    @Test
+    public void streamContent_cur2() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur2.parquet")).getFile());
+
+        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+            @Override
+            public Map<String, Object> start() { return new HashMap<>(); }
+            @Override
+            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+                final HashMap<String, Object> r = new HashMap<>(target);
+                r.put(heading, value);
+                return r;
+            }
+            @Override
+            public Map<String, Object> finish(Map<String, Object> target) { return target; }
+        };
+
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+            List<Map<String, Object>> rows = s.collect(Collectors.toList());
+            assertFalse(rows.isEmpty());
+        }
     }
 
 }
