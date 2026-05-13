@@ -179,7 +179,7 @@ public class RealWorldTests {
             final List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             assertEquals(1036, result.size());
-            assertEquals(91, result.get(0).keySet().size());
+            assertEquals(91, result.get(0).size());
 
             // check types: String, Double, and Long columns
             Map<String, Object> first = result.get(0);
