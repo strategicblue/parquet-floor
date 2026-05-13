@@ -1,0 +1,26 @@
+{
+  "name": "kiro_default",
+  "description": "Default agent with project-specific instructions",
+  "prompt": "Before using the execute_terminal_command tool, always describe the exact command you intend to run and explain why.",
+  "allowedTools": [
+    "@idea/get_all_open_file_paths",
+    "@idea/get_file_text_by_path",
+    "@idea/get_file_problems",
+    "@idea/get_symbol_info",
+    "@idea/find_files_by_name_keyword",
+    "@idea/find_files_by_glob",
+    "@idea/list_directory_tree",
+    "@idea/read_file",
+    "@idea/search_file",
+    "@idea/search_text",
+    "@idea/search_symbol",
+    "@idea/search_in_files_by_text",
+    "@idea/search_in_files_by_regex",
+    "@idea/get_project_dependencies",
+    "@idea/get_project_modules",
+    "@idea/get_run_configurations",
+    "@idea/get_repositories",
+    "@idea/open_file_in_editor",
+    "@idea/reformat_file"
+  ]
+}
