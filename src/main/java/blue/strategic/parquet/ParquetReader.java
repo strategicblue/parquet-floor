@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
@@ -32,6 +31,21 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+/**
+ * Reads Parquet files column-by-column, hydrating domain objects via a {@link Hydrator}.
+ * <p>
+ * Supported column types:
+ * <ul>
+ *   <li>Flat (non-repeated) primitive columns</li>
+ *   <li>MAP columns with primitive key and primitive value (exactly 2 leaf columns in the
+ *       repeated group). Maps with struct/group values are not supported and will be skipped.</li>
+ * </ul>
+ * <p>
+ * A {@code Function<String[], F>} fieldMapper controls which fields are read and maps them to
+ * opaque user context objects passed to the hydrator. The fieldMapper is called once per unique
+ * field path and the result is cached. The {@code String[]} passed to the fieldMapper is reused
+ * internally for map key resolution — callers must not retain a reference to it.
+ */
 public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
 
     private static final Object SKIP = new Object();
@@ -107,20 +121,20 @@ public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
 
     public static Stream<String[]> streamContentToStrings(File file) throws IOException {
         return stream(spliterator(makeInputFile(file),
-                new Hydrator<LinkedList<String>, String[], String[]>() {
+                new Hydrator<List<String>, String[], String[]>() {
                     @Override
-                    public LinkedList<String> start() {
-                        return new LinkedList<>();
+                    public List<String> start() {
+                        return new ArrayList<>();
                     }
 
                     @Override
-                    public LinkedList<String> add(LinkedList<String> target, String[] heading, Object value) {
+                    public List<String> add(List<String> target, String[] heading, Object value) {
                         target.add(String.join(".", heading) + "=" + value.toString());
                         return target;
                     }
 
                     @Override
-                    public String[] finish(LinkedList<String> target) {
+                    public String[] finish(List<String> target) {
                         return target.toArray(new String[0]);
                     }
                 }));
@@ -245,6 +259,7 @@ public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
         String[] pathBuffer = mapPathBuffers[mapIndex];
         pathBuffer[1] = key;
         F heading = fieldMapper.apply(pathBuffer);
+        // SKIP is a private singleton so it can never collide with a real F value from the fieldMapper
         cache.put(key, heading == null ? (F) SKIP : heading);
         return heading;
     }

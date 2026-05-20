@@ -391,4 +391,19 @@ public class RealWorldTests {
         }
     }
 
+    @Test
+    public void streamContentToStrings_mtcars() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/mtcars.parquet")).getFile());
+
+        try (Stream<String[]> s = ParquetReader.streamContentToStrings(parquet)) {
+            List<String[]> result = s.collect(Collectors.toList());
+            assertEquals(32, result.size());
+
+            String[] first = result.get(0);
+            assertEquals("model=Mazda RX4", first[0]);
+            assertEquals("mpg=21.0", first[1]);
+        }
+    }
+
 }
