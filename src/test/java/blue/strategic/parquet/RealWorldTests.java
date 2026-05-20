@@ -6,7 +6,6 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -33,16 +32,16 @@ public class RealWorldTests {
         final File parquet = new File(Objects.requireNonNull(
                 getClass().getResource("/mtcars.parquet")).getFile());
 
-        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+        Hydrator<Map<String, Object>, Map<String, Object>, String[]> hydrator = new Hydrator<>() {
             @Override
             public Map<String, Object> start() {
                 return new HashMap<>();
             }
 
             @Override
-            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+            public HashMap<String, Object> add(Map<String, Object> target, String[] heading, Object value) {
                 final HashMap<String, Object> r = new HashMap<>(target);
-                r.put(heading, value);
+                r.put(String.join(".", heading), value);
                 return r;
             }
 
@@ -52,7 +51,7 @@ public class RealWorldTests {
             }
         };
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator)) {
             final List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             // the dataset contains be 32 rows
@@ -157,16 +156,16 @@ public class RealWorldTests {
         final File parquet = new File(Objects.requireNonNull(
                 getClass().getResource("/cur1.parquet")).getFile());
 
-        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+        Hydrator<Map<String, Object>, Map<String, Object>, String[]> hydrator = new Hydrator<>() {
             @Override
             public Map<String, Object> start() {
                 return new HashMap<>();
             }
 
             @Override
-            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+            public HashMap<String, Object> add(Map<String, Object> target, String[] heading, Object value) {
                 final HashMap<String, Object> r = new HashMap<>(target);
-                r.put(heading, value);
+                r.put(String.join(".", heading), value);
                 return r;
             }
 
@@ -176,7 +175,7 @@ public class RealWorldTests {
             }
         };
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator)) {
             final List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             assertEquals(1036, result.size());
@@ -234,16 +233,43 @@ public class RealWorldTests {
 
     /**
      * cur2.parquet contains MAP columns (cost_category, discount, product, resource_tags)
-     * which use repeated fields. The library does not currently support repeated fields.
-     * This test documents the desired behaviour — ignored until repeated field support is added.
+     * which use repeated fields.
      */
-    @Ignore("Repeated fields (MAP columns) not yet supported")
     @Test
     public void streamContent_cur2() throws IOException {
         final File parquet = new File(Objects.requireNonNull(
                 getClass().getResource("/cur2.parquet")).getFile());
 
-        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+        Hydrator<Map<String, Object>, Map<String, Object>, String[]> hydrator = new Hydrator<>() {
+            @Override
+            public Map<String, Object> start() { return new HashMap<>(); }
+            @Override
+            public HashMap<String, Object> add(Map<String, Object> target, String[] heading, Object value) {
+                final HashMap<String, Object> r = new HashMap<>(target);
+                r.put(String.join(".", heading), value);
+                return r;
+            }
+            @Override
+            public Map<String, Object> finish(Map<String, Object> target) { return target; }
+        };
+
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator)) {
+            List<Map<String, Object>> rows = s.collect(Collectors.toList());
+            assertEquals(13524, rows.size());
+
+            // First row has a product map entry
+            Map<String, Object> first = rows.get(0);
+            assertEquals("Anniversary", first.get("bill_bill_type"));
+            assertEquals("AWS CloudFormation", first.get("product.product_name"));
+        }
+    }
+
+    @Test
+    public void streamContent_cur2_withFieldMapper_selectiveColumns() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur2.parquet")).getFile());
+
+        Hydrator<Map<String, Object>, Map<String, Object>, String> hydrator = new Hydrator<>() {
             @Override
             public Map<String, Object> start() { return new HashMap<>(); }
             @Override
@@ -256,9 +282,112 @@ public class RealWorldTests {
             public Map<String, Object> finish(Map<String, Object> target) { return target; }
         };
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+        // Only select bill_bill_type and all product map keys
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator, path -> {
+            if (path.length == 1) {
+                if ("bill_bill_type".equals(path[0]) || "product".equals(path[0])) {
+                    return path[0];
+                }
+                return null; // skip other columns
+            }
+            // Map key: accept all product keys
+            return path[0] + "." + path[1];
+        })) {
             List<Map<String, Object>> rows = s.collect(Collectors.toList());
-            assertFalse(rows.isEmpty());
+            assertEquals(13524, rows.size());
+
+            Map<String, Object> first = rows.get(0);
+            assertEquals("Anniversary", first.get("bill_bill_type"));
+            assertEquals("AWS CloudFormation", first.get("product.product_name"));
+            // Should NOT have columns we didn't ask for
+            assertNull(first.get("line_item_currency_code"));
+        }
+    }
+
+    @Test
+    public void streamContent_cur2_withFieldMapper_customHeadings() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur2.parquet")).getFile());
+
+        Hydrator<Map<String, Object>, Map<String, Object>, String> hydrator = new Hydrator<>() {
+            @Override
+            public Map<String, Object> start() { return new HashMap<>(); }
+            @Override
+            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+                final HashMap<String, Object> r = new HashMap<>(target);
+                r.put(heading, value);
+                return r;
+            }
+            @Override
+            public Map<String, Object> finish(Map<String, Object> target) { return target; }
+        };
+
+        // Custom headings and selective map keys
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator, path -> {
+            if (path.length == 1) {
+                if ("bill_bill_type".equals(path[0])) return "bill_type";
+                if ("product".equals(path[0])) return "product";
+                return null;
+            }
+            // Only accept product_name from the product map
+            if ("product".equals(path[0]) && "product_name".equals(path[1])) {
+                return "the_product_name";
+            }
+            return null; // skip other map keys
+        })) {
+            List<Map<String, Object>> rows = s.collect(Collectors.toList());
+            assertEquals(13524, rows.size());
+
+            Map<String, Object> first = rows.get(0);
+            assertEquals("Anniversary", first.get("bill_type"));
+            assertEquals("AWS CloudFormation", first.get("the_product_name"));
+            assertNull(first.get("product.region"));
+            assertNull(first.get("line_item_currency_code"));
+            assertNull(first.get("bill_bill_type"));
+        }
+    }
+
+    /**
+     * Demonstrates that fieldMapper headings can be arbitrary Objects (e.g. enums),
+     * not just Strings — enabling Clojure keywords or other opaque identifiers.
+     */
+    @Test
+    public void streamContent_cur2_withOpaqueKeys() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur2.parquet")).getFile());
+
+        Hydrator<Map<Object, Object>, Map<Object, Object>, Object> hydrator = new Hydrator<>() {
+            @Override
+            public Map<Object, Object> start() { return new HashMap<>(); }
+            @Override
+            public Map<Object, Object> add(Map<Object, Object> target, Object heading, Object value) {
+                Map<Object, Object> r = new HashMap<>(target);
+                r.put(heading, value);
+                return r;
+            }
+            @Override
+            public Map<Object, Object> finish(Map<Object, Object> target) { return target; }
+        };
+
+        Object BILL_TYPE_KEY = 42;
+        Object PRODUCT_NAME_KEY = 99;
+
+        try (Stream<Map<Object, Object>> s = ParquetReader.streamContent(parquet, hydrator, path -> {
+            if (path.length == 1) {
+                if ("bill_bill_type".equals(path[0])) return BILL_TYPE_KEY;
+                if ("product".equals(path[0])) return "product";
+                return null;
+            }
+            if ("product".equals(path[0]) && "product_name".equals(path[1])) return PRODUCT_NAME_KEY;
+            return null;
+        })) {
+            List<Map<Object, Object>> rows = s.collect(Collectors.toList());
+            assertEquals(13524, rows.size());
+
+            Map<Object, Object> first = rows.get(0);
+            assertEquals("Anniversary", first.get(BILL_TYPE_KEY));
+            assertEquals("AWS CloudFormation", first.get(PRODUCT_NAME_KEY));
+            assertNull(first.get("bill_bill_type"));
         }
     }
 

@@ -20,90 +20,110 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.Spliterator;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
+public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
+
+    private static final Object SKIP = new Object();
+    private static final Function<String[], String[]> DEFAULT_FIELD_MAPPER = Function.identity();
+
     private final ParquetFileReader reader;
-    private final Hydrator<U, S> hydrator;
-    private final List<ColumnDescriptor> columns;
+    private final Hydrator<U, S, F> hydrator;
+    private final Function<String[], F> fieldMapper;
     private final MessageType schema;
     private final GroupConverter recordConverter;
     private final String createdBy;
 
+    private final ColumnDescriptor[] flatColumns;
+    private final F[] flatHeadings;
+
+    private final ColumnDescriptor[] mapKeyColumns;
+    private final ColumnDescriptor[] mapValueColumns;
+    private final Map<String, F>[] mapKeyHeadingCaches;
+    private final String[][] mapPathBuffers;
+
     private boolean finished;
     private long currentRowGroupSize = -1L;
-    private List<ColumnReader> currentRowGroupColumnReaders;
+    private ColumnReader[] flatReaders;
+    private ColumnReader[] mapKeyReaders;
+    private ColumnReader[] mapValueReaders;
     private long currentRowIndex = -1L;
 
-    public static <U, S> Stream<S> streamContent(File file, HydratorSupplier<U, S> hydrator) throws IOException {
-        return streamContent(file, hydrator, null);
+    public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S, String[]> hydrator) throws IOException {
+        return streamContent(makeInputFile(file), hydrator);
     }
 
-    public static <U, S> Stream<S> streamContent(File file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
-        return streamContent(makeInputFile(file), hydrator, columns);
+    public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S, String[]> hydrator) throws IOException {
+        return stream(new ParquetReader<>(file, hydrator, DEFAULT_FIELD_MAPPER));
     }
 
-    public static <U, S> Stream<S> streamContent(InputFile file, HydratorSupplier<U, S> hydrator) throws IOException {
-        return streamContent(file, hydrator, null);
+    public static <U, S, F> Stream<S> streamContent(File file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+        return streamContent(makeInputFile(file), hydrator, fieldMapper);
     }
 
-    public static <U, S> Stream<S> streamContent(InputFile file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
-        return stream(spliterator(file, hydrator, columns));
+    /**
+     * Streams content using a fieldMapper function to resolve headings.
+     * <p>
+     * The fieldMapper is called once per unique field path encountered and the result is cached.
+     * It receives a {@code String[]} path (e.g. {@code ["colName"]} for flat columns,
+     * {@code ["mapName", "key"]} for map entries) and returns the opaque heading object
+     * to pass to the hydrator, or {@code null} to skip the field.
+     */
+    public static <U, S, F> Stream<S> streamContent(InputFile file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+        return stream(new ParquetReader<>(file, hydrator, fieldMapper));
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(File file, HydratorSupplier<U, S> hydrator) throws IOException {
-        return spliterator(file, hydrator, null);
+    public static <U, S> ParquetReader<U, S, String[]> spliterator(File file, Hydrator<U, S, String[]> hydrator) throws IOException {
+        return spliterator(makeInputFile(file), hydrator);
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(File file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
-        return spliterator(makeInputFile(file), hydrator, columns);
+    public static <U, S> ParquetReader<U, S, String[]> spliterator(InputFile file, Hydrator<U, S, String[]> hydrator) throws IOException {
+        return new ParquetReader<>(file, hydrator, DEFAULT_FIELD_MAPPER);
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, HydratorSupplier<U, S> hydrator) throws IOException {
-        return spliterator(file, hydrator, null);
+    public static <U, S, F> ParquetReader<U, S, F> spliterator(File file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+        return spliterator(makeInputFile(file), hydrator, fieldMapper);
     }
 
-    public static <U, S> ParquetReader<U, S> spliterator(InputFile file, HydratorSupplier<U, S> hydrator, Collection<String> columns) throws IOException {
-        Set<String> columnSet = (null == columns) ? Collections.emptySet() : Set.copyOf(columns);
-        return new ParquetReader<>(file, columnSet, hydrator);
+    public static <U, S, F> ParquetReader<U, S, F> spliterator(InputFile file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+        return new ParquetReader<>(file, hydrator, fieldMapper);
     }
 
-    public static <U, S> Stream<S> stream(ParquetReader<U, S> reader) {
+    public static <U, S, F> Stream<S> stream(ParquetReader<U, S, F> reader) {
         return StreamSupport
                 .stream(reader, false)
                 .onClose(() -> closeSilently(reader));
     }
 
     public static Stream<String[]> streamContentToStrings(File file) throws IOException {
-        return stream(spliterator(makeInputFile(file), columns -> {
-            final AtomicInteger pos = new AtomicInteger(0);
-            return new Hydrator<String[], String[]>() {
-                @Override
-                public String[] start() {
-                    return new String[columns.size()];
-                }
+        return stream(spliterator(makeInputFile(file),
+                new Hydrator<LinkedList<String>, String[], String[]>() {
+                    @Override
+                    public LinkedList<String> start() {
+                        return new LinkedList<>();
+                    }
 
-                @Override
-                public String[] add(String[] target, String heading, Object value) {
-                    target[pos.getAndIncrement()] = heading + "=" + value.toString();
-                    return target;
-                }
+                    @Override
+                    public LinkedList<String> add(LinkedList<String> target, String[] heading, Object value) {
+                        target.add(String.join(".", heading) + "=" + value.toString());
+                        return target;
+                    }
 
-                @Override
-                public String[] finish(String[] target) {
-                    return target;
-                }
-            };
-        }, null));
+                    @Override
+                    public String[] finish(LinkedList<String> target) {
+                        return target.toArray(new String[0]);
+                    }
+                }));
     }
 
     public static ParquetMetadata readMetadata(File file) throws IOException {
@@ -116,18 +136,66 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         }
     }
 
-    private ParquetReader(InputFile file, Set<String> columnNames, HydratorSupplier<U, S> hydratorSupplier) throws IOException {
+    @SuppressWarnings("unchecked")
+    private ParquetReader(InputFile file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
         this.reader = ParquetFileReader.open(file);
         FileMetaData meta = reader.getFooter().getFileMetaData();
         this.schema = meta.getSchema();
         this.recordConverter = new DummyRecordConverter(this.schema).getRootConverter();
         this.createdBy = meta.getCreatedBy();
+        this.hydrator = hydrator;
+        this.fieldMapper = fieldMapper;
 
-        this.columns = schema.getColumns().stream()
-                .filter(c -> columnNames.isEmpty() || columnNames.contains(c.getPath()[0]))
-                .collect(Collectors.toList());
+        List<ColumnDescriptor> flatColList = new ArrayList<>();
+        List<F> flatHeadingList = new ArrayList<>();
+        Map<String, ColumnDescriptor[]> repeatedGroups = new LinkedHashMap<>();
 
-        this.hydrator = hydratorSupplier.get(this.columns);
+        for (ColumnDescriptor col : schema.getColumns()) {
+            if (col.getMaxRepetitionLevel() == 0) {
+                F heading = this.fieldMapper.apply(col.getPath());
+                if (heading != null) {
+                    flatColList.add(col);
+                    flatHeadingList.add(heading);
+                }
+            } else {
+                String mapName = col.getPath()[0];
+                if (!repeatedGroups.containsKey(mapName)) {
+                    if (this.fieldMapper.apply(new String[]{mapName}) == null) {
+                        continue;
+                    }
+                    repeatedGroups.put(mapName, new ColumnDescriptor[2]);
+                }
+                ColumnDescriptor[] pair = repeatedGroups.get(mapName);
+                if (pair[0] == null) {
+                    pair[0] = col;
+                } else {
+                    pair[1] = col;
+                }
+            }
+        }
+
+        this.flatColumns = flatColList.toArray(new ColumnDescriptor[0]);
+        this.flatHeadings = (F[]) flatHeadingList.toArray();
+
+        List<ColumnDescriptor> keyColList = new ArrayList<>();
+        List<ColumnDescriptor> valueColList = new ArrayList<>();
+        List<Map<String, F>> caches = new ArrayList<>();
+        List<String[]> pathBuffers = new ArrayList<>();
+
+        for (Map.Entry<String, ColumnDescriptor[]> entry : repeatedGroups.entrySet()) {
+            ColumnDescriptor[] pair = entry.getValue();
+            if (pair[0] != null && pair[1] != null) {
+                keyColList.add(pair[0]);
+                valueColList.add(pair[1]);
+                caches.add(new HashMap<>());
+                pathBuffers.add(new String[]{entry.getKey(), null});
+            }
+        }
+
+        this.mapKeyColumns = keyColList.toArray(new ColumnDescriptor[0]);
+        this.mapValueColumns = valueColList.toArray(new ColumnDescriptor[0]);
+        this.mapKeyHeadingCaches = caches.toArray(new Map[0]);
+        this.mapPathBuffers = pathBuffers.toArray(new String[0][]);
     }
 
     private static void closeSilently(Closeable resource) {
@@ -167,6 +235,20 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private F resolveMapKeyHeading(int mapIndex, String key) {
+        Map<String, F> cache = mapKeyHeadingCaches[mapIndex];
+        F cached = cache.get(key);
+        if (cached != null) {
+            return cached == SKIP ? null : cached;
+        }
+        String[] pathBuffer = mapPathBuffers[mapIndex];
+        pathBuffer[1] = key;
+        F heading = fieldMapper.apply(pathBuffer);
+        cache.put(key, heading == null ? (F) SKIP : heading);
+        return heading;
+    }
+
     @Override
     public void close() throws IOException {
         reader.close();
@@ -189,16 +271,45 @@ public final class ParquetReader<U, S> implements Spliterator<S>, Closeable {
                 ColumnReadStore columnReadStore = new ColumnReadStoreImpl(rowGroup, this.recordConverter, this.schema, this.createdBy);
 
                 this.currentRowGroupSize = rowGroup.getRowCount();
-                this.currentRowGroupColumnReaders = columns.stream().map(columnReadStore::getColumnReader).collect(Collectors.toList());
+                this.flatReaders = new ColumnReader[flatColumns.length];
+                for (int i = 0; i < flatColumns.length; i++) {
+                    this.flatReaders[i] = columnReadStore.getColumnReader(flatColumns[i]);
+                }
+                this.mapKeyReaders = new ColumnReader[mapKeyColumns.length];
+                this.mapValueReaders = new ColumnReader[mapValueColumns.length];
+                for (int i = 0; i < mapKeyColumns.length; i++) {
+                    this.mapKeyReaders[i] = columnReadStore.getColumnReader(mapKeyColumns[i]);
+                    this.mapValueReaders[i] = columnReadStore.getColumnReader(mapValueColumns[i]);
+                }
                 this.currentRowIndex = 0L;
             }
 
             U record = hydrator.start();
-            for (ColumnReader columnReader: this.currentRowGroupColumnReaders) {
-                record = hydrator.add(record, columnReader.getDescriptor().getPath()[0], readValue(columnReader));
+
+            for (int i = 0; i < flatReaders.length; i++) {
+                ColumnReader columnReader = flatReaders[i];
+                record = hydrator.add(record, flatHeadings[i], readValue(columnReader));
                 columnReader.consume();
-                if (columnReader.getCurrentRepetitionLevel() != 0) {
-                    throw new IllegalStateException("Unexpected repetition");
+            }
+
+            for (int m = 0; m < mapKeyReaders.length; m++) {
+                ColumnReader keyReader = mapKeyReaders[m];
+                ColumnReader valueReader = mapValueReaders[m];
+
+                int keyDefLevel = keyReader.getCurrentDefinitionLevel();
+                if (keyDefLevel == 0) {
+                    keyReader.consume();
+                    valueReader.consume();
+                } else {
+                    do {
+                        String key = (String) readValue(keyReader);
+                        F heading = (key != null) ? resolveMapKeyHeading(m, key) : null;
+                        if (heading != null) {
+                            record = hydrator.add(record, heading, readValue(valueReader));
+                        }
+                        keyReader.consume();
+                        valueReader.consume();
+                    } while (keyReader.getCurrentRepetitionLevel() != 0);
                 }
             }
 
