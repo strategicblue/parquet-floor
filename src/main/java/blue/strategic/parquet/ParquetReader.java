@@ -73,15 +73,19 @@ public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
     private ColumnReader[] mapValueReaders;
     private long currentRowIndex = -1L;
 
-    public static <U, S> Stream<S> streamContent(File file, Hydrator<U, S, String[]> hydrator) throws IOException {
+    public static <U, S> Stream<S> streamContent(File file,
+                                                 Hydrator<U, S, String[]> hydrator) throws IOException {
         return streamContent(makeInputFile(file), hydrator);
     }
 
-    public static <U, S> Stream<S> streamContent(InputFile file, Hydrator<U, S, String[]> hydrator) throws IOException {
+    public static <U, S> Stream<S> streamContent(InputFile file,
+                                                 Hydrator<U, S, String[]> hydrator) throws IOException {
         return stream(new ParquetReader<>(file, hydrator, DEFAULT_FIELD_MAPPER));
     }
 
-    public static <U, S, F> Stream<S> streamContent(File file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+    public static <U, S, F> Stream<S> streamContent(File file,
+                                                    Hydrator<U, S, F> hydrator,
+                                                    Function<String[], F> fieldMapper) throws IOException {
         return streamContent(makeInputFile(file), hydrator, fieldMapper);
     }
 
@@ -93,23 +97,31 @@ public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
      * {@code ["mapName", "key"]} for map entries) and returns the opaque heading object
      * to pass to the hydrator, or {@code null} to skip the field.
      */
-    public static <U, S, F> Stream<S> streamContent(InputFile file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+    public static <U, S, F> Stream<S> streamContent(InputFile file,
+                                                    Hydrator<U, S, F> hydrator,
+                                                    Function<String[], F> fieldMapper) throws IOException {
         return stream(new ParquetReader<>(file, hydrator, fieldMapper));
     }
 
-    public static <U, S> ParquetReader<U, S, String[]> spliterator(File file, Hydrator<U, S, String[]> hydrator) throws IOException {
+    public static <U, S> ParquetReader<U, S, String[]> spliterator(File file,
+                                                                   Hydrator<U, S, String[]> hydrator) throws IOException {
         return spliterator(makeInputFile(file), hydrator);
     }
 
-    public static <U, S> ParquetReader<U, S, String[]> spliterator(InputFile file, Hydrator<U, S, String[]> hydrator) throws IOException {
+    public static <U, S> ParquetReader<U, S, String[]> spliterator(InputFile file,
+                                                                   Hydrator<U, S, String[]> hydrator) throws IOException {
         return new ParquetReader<>(file, hydrator, DEFAULT_FIELD_MAPPER);
     }
 
-    public static <U, S, F> ParquetReader<U, S, F> spliterator(File file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+    public static <U, S, F> ParquetReader<U, S, F> spliterator(File file,
+                                                               Hydrator<U, S, F> hydrator,
+                                                               Function<String[], F> fieldMapper) throws IOException {
         return spliterator(makeInputFile(file), hydrator, fieldMapper);
     }
 
-    public static <U, S, F> ParquetReader<U, S, F> spliterator(InputFile file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+    public static <U, S, F> ParquetReader<U, S, F> spliterator(InputFile file,
+                                                               Hydrator<U, S, F> hydrator,
+                                                               Function<String[], F> fieldMapper) throws IOException {
         return new ParquetReader<>(file, hydrator, fieldMapper);
     }
 
@@ -151,7 +163,9 @@ public final class ParquetReader<U, S, F> implements Spliterator<S>, Closeable {
     }
 
     @SuppressWarnings("unchecked")
-    private ParquetReader(InputFile file, Hydrator<U, S, F> hydrator, Function<String[], F> fieldMapper) throws IOException {
+    private ParquetReader(InputFile file,
+                          Hydrator<U, S, F> hydrator,
+                          Function<String[], F> fieldMapper) throws IOException {
         this.reader = ParquetFileReader.open(file);
         FileMetaData meta = reader.getFooter().getFileMetaData();
         this.schema = meta.getSchema();
