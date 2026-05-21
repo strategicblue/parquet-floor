@@ -3,27 +3,27 @@ package blue.strategic.parquet;
 /**
  * Creates and hydrates a rich domain object from a Parquet row.
  */
-public interface Hydrator<U, S> {
+public interface Hydrator<T, R, F> {
 
     /**
      * Creates a new mutable instance to be hydrated.
      * @return new instance to be hydrated
      */
-    U start();
+    T start();
 
     /**
      * Hydrates the target instance by applying the specified value from the Parquet row.
      * @param target object being hydrated
-     * @param heading the name of the column whose value is being applied
+     * @param userFieldContext the user object matching the field whose value is being supplied
      * @param value the value to apply
      * @return the new target
      */
-    U add(U target, String heading, Object value);
+    T add(T target, F userFieldContext, Object value);
 
     /**
-     * Seals the mutable hydration target.
+     * Seals the mutable hydration target and returns a finished record.
      * @param target object being hydrated
-     * @return the sealed object
+     * @return the finished record object
      */
-    S finish(U target);
+    R finish(T target);
 }

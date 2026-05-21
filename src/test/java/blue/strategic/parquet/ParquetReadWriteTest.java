@@ -9,10 +9,10 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,16 +41,16 @@ public class ParquetReadWriteTest {
             valueWriter.write("json_data", record[2]);
         };
 
-        Hydrator<Map<String, Object>, Map<String, Object>> hydrator = new Hydrator<>() {
+        Hydrator<Map<String, Object>, Map<String, Object>, String[]> hydrator = new Hydrator<>() {
             @Override
             public Map<String, Object> start() {
                 return new HashMap<>();
             }
 
             @Override
-            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+            public HashMap<String, Object> add(Map<String, Object> target, String[] heading, Object value) {
                 HashMap<String, Object> r = new HashMap<>(target);
-                r.put(heading, value);
+                r.put(String.join(".", heading), value);
                 return r;
             }
 
@@ -65,7 +65,7 @@ public class ParquetReadWriteTest {
             writer.write(new Object[]{2L, "hello2", "{\"height\": \"12\"}"});
         }
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator))) {
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator)) {
             List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             //noinspection unchecked
@@ -74,7 +74,8 @@ public class ParquetReadWriteTest {
                     Map.of("id", 2L, "email", "hello2", "json_data", "{\"height\": \"12\"}")));
         }
 
-        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, HydratorSupplier.constantly(hydrator), Collections.singleton("id"))) {
+        Function<String[], String[]> fieldMapper = path -> "id".equals(path[0]) ? path : null;
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator, fieldMapper)) {
             List<Map<String, Object>> result = s.collect(Collectors.toList());
 
             //noinspection unchecked
