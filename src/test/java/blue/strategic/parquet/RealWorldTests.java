@@ -305,6 +305,40 @@ public class RealWorldTests {
     }
 
     @Test
+    public void streamContent_cur2_withFieldMapper_skipsEntireMapColumn() throws IOException {
+        final File parquet = new File(Objects.requireNonNull(
+                getClass().getResource("/cur2.parquet")).getFile());
+
+        Hydrator<Map<String, Object>, Map<String, Object>, String> hydrator = new Hydrator<>() {
+            @Override
+            public Map<String, Object> start() { return new HashMap<>(); }
+            @Override
+            public HashMap<String, Object> add(Map<String, Object> target, String heading, Object value) {
+                final HashMap<String, Object> r = new HashMap<>(target);
+                r.put(heading, value);
+                return r;
+            }
+            @Override
+            public Map<String, Object> finish(Map<String, Object> target) { return target; }
+        };
+
+        // Select one flat column, skip all map columns by returning null for their top-level path
+        try (Stream<Map<String, Object>> s = ParquetReader.streamContent(parquet, hydrator, path -> {
+            if (path.length == 1 && "bill_bill_type".equals(path[0])) {
+                return "bill_bill_type";
+            }
+            return null;
+        })) {
+            List<Map<String, Object>> rows = s.collect(Collectors.toList());
+            assertEquals(13524, rows.size());
+
+            Map<String, Object> first = rows.get(0);
+            assertEquals("Anniversary", first.get("bill_bill_type"));
+            assertEquals(1, first.size()); // only the one flat column, no map entries
+        }
+    }
+
+    @Test
     public void streamContent_cur2_withFieldMapper_customHeadings() throws IOException {
         final File parquet = new File(Objects.requireNonNull(
                 getClass().getResource("/cur2.parquet")).getFile());
