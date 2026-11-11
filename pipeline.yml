@@ -129,7 +129,7 @@ jobs:
         path: sh
         args:
         - -c
-        - scripts/run-mvn.sh versions:use-latest-releases -P dependencies && (git commit -am "Upgrade dependency versions." || true)
+        - scripts/run-mvn.sh versions:use-latest-releases versions:update-properties -P dependencies,release && (git commit -am "Upgrade dependency versions." || true)
   - put: parquet-floor
     params:
       repository: parquet-floor

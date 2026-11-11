@@ -37,6 +37,13 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven-enforcer-plugin.version>3.6.0</maven-enforcer-plugin.version>
+    <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+    <versions-maven-plugin.version>2.18.0</versions-maven-plugin.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
+    <central-publishing-maven-plugin.version>0.8.0</central-publishing-maven-plugin.version>
+    <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
   </properties>
 
   <dependencies>
@@ -71,7 +78,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>${maven-enforcer-plugin.version}</version>
         <executions>
           <execution>
             <id>enforce-versions</id>
@@ -97,7 +104,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.14.0</version>
+        <version>${maven-compiler-plugin.version}</version>
         <configuration>
           <source>11</source>
           <target>11</target>
@@ -115,7 +122,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>versions-maven-plugin</artifactId>
-            <version>2.18.0</version>
+            <version>${versions-maven-plugin.version}</version>
           </plugin>
         </plugins>
       </build>
@@ -127,7 +134,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>3.3.1</version>
+            <version>${maven-source-plugin.version}</version>
             <executions>
               <execution>
                 <id>attach-sources</id>
@@ -140,7 +147,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.11.2</version>
+            <version>${maven-javadoc-plugin.version}</version>
             <executions>
               <execution>
                 <id>attach-javadocs</id>
@@ -153,7 +160,7 @@
           <plugin>
             <groupId>org.sonatype.central</groupId>
             <artifactId>central-publishing-maven-plugin</artifactId>
-            <version>0.8.0</version>
+            <version>${central-publishing-maven-plugin.version}</version>
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
@@ -164,7 +171,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.2.8</version>
+            <version>${maven-gpg-plugin.version}</version>
             <executions>
               <execution>
                 <id>sign-artifacts</id>
